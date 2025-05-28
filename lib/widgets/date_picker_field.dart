@@ -1,3 +1,4 @@
+import 'package:booking_app/constants/app_color.dart';
 import 'package:flutter/material.dart';
 
 class DatePickerField extends StatelessWidget {
@@ -10,10 +11,7 @@ class DatePickerField extends StatelessWidget {
     required this.onDateSelected,
   });
 
-  static const TextStyle datePickerTextStyle = TextStyle(
-    color: Colors.blue,
-    fontSize: 16,
-  );
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +34,10 @@ class DatePickerField extends StatelessWidget {
             selectedDate == null
                 ? 'Select Booking Date'
                 : 'Selected: ${selectedDate!.toLocal().toString().split(' ')[0]}',
-            style: datePickerTextStyle,
+            style: TextStyle(
+    color: AppColor.primary,
+    fontSize: 16,
+  ),
           ),
         ),
       ],

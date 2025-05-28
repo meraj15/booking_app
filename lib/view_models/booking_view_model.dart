@@ -1,46 +1,158 @@
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/booking.dart';
-import 'dart:convert';
+import 'package:booking_app/models/booking.dart';
+import 'package:booking_app/services/firestore_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'dart:async';
 
 class BookingViewModel extends ChangeNotifier {
-  List<Booking> _bookings = [];
-   final double _spacing = 15.0;
-  double get spacing => _spacing;
-  List<Booking> get bookings => _bookings;
+  DateTime? _filterStartDate;
+  DateTime? _filterEndDate;
+  bool isSharedPdf = true;
+  StreamSubscription? _bookingSubscription;
+  final _bookingsStreamController = StreamController<List<Booking>>.broadcast();
+  List<String> _organizers = ['Ramzaan', 'Irfan', 'Other'];
 
-  
+  DateTime? get filterStartDate => _filterStartDate;
+  DateTime? get filterEndDate => _filterEndDate;
+  Stream<List<Booking>> get bookings => _bookingsStreamController.stream;
+  List<String> get organizers => _organizers;
+  GoogleSignInAccount? get user => _user;
 
-  Future<void> loadBookings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? bookingsJson = prefs.getString('bookings');
-    if (bookingsJson != null) {
-      final List<dynamic> decoded = jsonDecode(bookingsJson);
-      _bookings = decoded.map((item) => Booking.fromJson(item)).toList();
-      debugPrint('Loaded ${_bookings.length} bookings from SharedPreferences');
-      notifyListeners();
+  final FirestoreService _firestoreService = FirestoreService();
+  GoogleSignInAccount? _user;
+
+  BookingViewModel() {
+    _filterStartDate = DateTime(2025, 1, 1);
+    _filterEndDate = DateTime(2025, 12, 31);
+    _fetchBookings();
+  }
+
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+
+  Future<void> googleLogin() async {
+    try {
+      _user = await googleSignIn.signIn();
+      if (_user != null) {
+        _fetchBookings();
+        _fetchOrganizers();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      throw e;
     }
   }
 
+  Future<void> signOut() async {
+    try {
+      await googleSignIn.signOut();
+      _user = null;
+      _bookingsStreamController.add([]);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Sign out error: $e');
+      throw e;
+    }
+  }
+
+  void _fetchOrganizers() async {
+    if (_user?.email == null) return;
+    try {
+      final bookings = await _firestoreService.fetchBookingsOnce(_user!.email);
+      final customOrganizers = bookings
+          .map((b) => b.organizer)
+          .where((o) => o != null && o.isNotEmpty && o != 'Ramzaan' && o != 'Irfan') // Exclude defaults
+          .cast<String>()
+          .toSet()
+          .toList();
+      _organizers = ['Ramzaan', 'Irfan', ...customOrganizers, 'Other'];
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching organizers: $e');
+    }
+  }
+
+  void _fetchBookings() {
+    if (_user?.email == null) {
+      _bookingsStreamController.add([]);
+      return;
+    }
+    _bookingSubscription?.cancel();
+    _bookingSubscription = _firestoreService
+        .getBookings(_user!.email)
+        .map((bookings) => bookings
+            .where((b) =>
+                b.date.isAfter(_filterStartDate ?? DateTime(2000)) &&
+                b.date.isBefore(_filterEndDate ?? DateTime(2100)))
+            .toList()
+              ..sort((a, b) => a.date.compareTo(b.date)))
+        .listen(_bookingsStreamController.add, onError: (e) {
+          debugPrint('Error fetching bookings: $e');
+          _bookingsStreamController.addError(e);
+        });
+  }
+
   Future<void> addBooking(Booking booking) async {
-    _bookings.add(booking);
-    debugPrint('Added booking: ${booking.toJson()}');
-    await _saveBookings();
-    notifyListeners();
+    if (_user?.email == null) throw Exception('User not authenticated');
+    try {
+      final userBooking = Booking(
+        id: booking.id,
+        date: booking.date,
+        location: booking.location,
+        owner: booking.owner,
+        // userEmail: _user!.email,
+        dayNight: booking.dayNight,
+        organizer: booking.organizer,
+      );
+      await _firestoreService.addBooking(_user!.email, userBooking);
+      _fetchOrganizers();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error adding booking: $e');
+      throw e;
+    }
   }
 
   Future<void> updateBooking(int index, Booking booking) async {
-    _bookings[index] = booking;
-    debugPrint('Updated booking at index $index: ${booking.toJson()}');
-    await _saveBookings();
+    if (_user?.email == null) throw Exception('User not authenticated');
+    try {
+      await _firestoreService.updateBooking(_user!.email, index, booking);
+      _fetchOrganizers();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating booking: $e');
+      throw e;
+    }
+  }
+
+  Future<void> deleteBooking(int index) async {
+    if (_user?.email == null) throw Exception('User not authenticated');
+    try {
+      await _firestoreService.deleteBooking(_user!.email, index);
+      _fetchOrganizers();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting booking: $e');
+      throw e;
+    }
+  }
+
+  void filterBookings({DateTime? startDate, DateTime? endDate, DateTime? month}) {
+    if (month != null) {
+      _filterStartDate = DateTime(month.year, month.month, 1);
+      _filterEndDate = DateTime(month.year, month.month + 1, 0);
+    } else {
+      _filterStartDate = startDate ?? _filterStartDate;
+      _filterEndDate = endDate ?? _filterEndDate;
+    }
+    _fetchBookings();
     notifyListeners();
   }
 
-  Future<void> _saveBookings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<Map<String, dynamic>> serializableBookings =
-        _bookings.map((booking) => booking.toJson()).toList();
-    await prefs.setString('bookings', jsonEncode(serializableBookings));
-    debugPrint('Saved ${_bookings.length} bookings to SharedPreferences');
+  @override
+  void dispose() {
+    _bookingSubscription?.cancel();
+    _bookingsStreamController.close();
+    super.dispose();
   }
 }

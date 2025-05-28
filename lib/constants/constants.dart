@@ -1,27 +1,33 @@
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart';
 
-class AppConstants {
-  static const double spacing = 15.0;
-}
+// class AppConstants {
+//   static const double spacing = 15.0;
+// }
 
-class AppStyles {
-  static const TextStyle dialogTitleStyle = TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 18,
-  );
+// class AppStyles {
+//   static const TextStyle dialogTitleStyle = TextStyle(
+//     fontWeight: FontWeight.bold,
+//     fontSize: 18,
+//   );
 
-  static const TextStyle cancelButtonStyle = TextStyle(
-    color: Colors.grey,
-  );
+//   static const TextStyle cancelButtonStyle = TextStyle(
+//     color: Colors.grey,
+//   );
 
-  static const TextStyle buttonTextStyle = TextStyle(
-    color: Colors.white,
-  );
+//   static const TextStyle buttonTextStyle = TextStyle(
+//     color: Colors.white,
+//   );
 
-  static final ButtonStyle elevatedButtonStyle = ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8.0),
-    ),
-  );
+//   static final ButtonStyle elevatedButtonStyle = ElevatedButton.styleFrom(
+//     backgroundColor: Colors.blue,
+//     shape: RoundedRectangleBorder(
+//       borderRadius: BorderRadius.circular(8.0),
+//     ),
+//   );
+// }
+
+class ConstantsString {
+  static const String dateFormat = 'dd/MM/yyyy';
+  static const String appBarName = 'Booking App';
+  static const String bookingNotFound = 'No bookings match the filter.';
 }
