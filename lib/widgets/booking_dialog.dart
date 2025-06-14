@@ -10,15 +10,13 @@ import '../view_models/booking_view_model.dart';
 import 'text_field.dart';
 
 class BookingDialog extends StatefulWidget {
-  final String? id;
-  final int? index;
+  final String? bookingId;
   final Booking? booking;
   final bool isDuplicate;
 
   const BookingDialog({
     super.key,
-    this.id,
-    this.index,
+    this.bookingId,
     this.booking,
     this.isDuplicate = false,
   });
@@ -76,7 +74,6 @@ class _BookingDialogState extends State<BookingDialog> {
         },
         onError: (error) {
           setState(() {
-            _isSpeechAvailable = false;
             _isListeningForLocation = false;
             _isListeningForOwner = false;
           });
@@ -147,12 +144,12 @@ class _BookingDialogState extends State<BookingDialog> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _dateController.text =DateFormat(ConstantsString.dateFormat).format(picked);
+        _dateController.text = DateFormat(ConstantsString.dateFormat).format(picked);
       });
     }
   }
 
-  Future<void> _addBooking(BuildContext context) async {
+  Future<void> _saveBooking(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
     if (_formKey.currentState!.validate()) {
       String? finalOrganizer = _selectedOrganizer;
@@ -160,25 +157,24 @@ class _BookingDialogState extends State<BookingDialog> {
         finalOrganizer = _customOrganizerController.text.trim().toUpperCase();
         if (finalOrganizer.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('enter custom organizer')),
+            const SnackBar(content: Text('Enter custom organizer')),
           );
           return;
         }
       }
 
       final newBooking = Booking(
-        id: widget.id ?? '',
+        id: widget.bookingId ?? '', // Use empty ID for new bookings
         date: _selectedDate!,
         location: _locationController.text.trim().toUpperCase(),
         owner: _ownerController.text.trim().toUpperCase(),
-        // userEmail: viewModel.user!.email,
         dayNight: _isDayNight,
         organizer: finalOrganizer,
       );
 
       try {
-        if (widget.index != null && !widget.isDuplicate) {
-          await viewModel.updateBooking(widget.index!, newBooking);
+        if (widget.bookingId != null && !widget.isDuplicate) {
+          await viewModel.updateBooking(widget.bookingId!, newBooking);
         } else {
           await viewModel.addBooking(newBooking);
         }
@@ -206,7 +202,7 @@ class _BookingDialogState extends State<BookingDialog> {
       title: Text(
         widget.isDuplicate
             ? 'Duplicate Booking'
-            : widget.index == null
+            : widget.bookingId == null
                 ? 'Enter Booking Details'
                 : 'Edit Booking Details',
         style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -337,13 +333,13 @@ class _BookingDialogState extends State<BookingDialog> {
           child: Text('Cancel', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
         ),
         ElevatedButton(
-          onPressed: () => _addBooking(context),
+          onPressed: () => _saveBooking(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColor.primary,
             foregroundColor: AppColor.whiteColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
           ),
-          child: Text(widget.isDuplicate ? 'Add' : widget.index == null ? 'Add' : 'Update'),
+          child: Text(widget.isDuplicate ? 'Add' : widget.bookingId == null ? 'Add' : 'Update'),
         ),
       ],
     );

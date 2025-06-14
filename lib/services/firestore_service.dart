@@ -50,45 +50,33 @@ class FirestoreService {
             .toList());
   }
 
-  Future<void> updateExpense(String userEmail, int index, Expenses expense) async {
-    try {
-      final expenses = await getExpenses(userEmail: userEmail).first;
-      if (index >= 0 && index < expenses.length) {
-        final id = expenses[index].id;
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('expenses')
-            .doc(id)
-            .update(expense.toMap());
-      } else {
-        throw Exception('Invalid index: $index');
-      }
-    } catch (e) {
-      debugPrint('Error updating expense for $userEmail: $e');
-      rethrow;
-    }
+ Future<void> updateExpense(String userEmail, String id, Expenses expense) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userEmail)
+        .collection('expenses')
+        .doc(id)
+        .update(expense.toMap());
+  } catch (e) {
+    debugPrint('Error updating expense for $userEmail: $e');
+    rethrow;
   }
+}
 
-  Future<void> deleteExpense(String userEmail, int index) async {
-    try {
-      final expenses = await getExpenses(userEmail: userEmail).first;
-      if (index >= 0 && index < expenses.length) {
-        final id = expenses[index].id;
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('expenses')
-            .doc(id)
-            .delete();
-      } else {
-        throw Exception('Invalid index: $index');
-      }
-    } catch (e) {
-      debugPrint('Error deleting expense for $userEmail: $e');
-      rethrow;
-    }
+Future<void> deleteExpense(String userEmail, String id) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userEmail)
+        .collection('expenses')
+        .doc(id)
+        .delete();
+  } catch (e) {
+    debugPrint('Error deleting expense for $userEmail: $e');
+    rethrow;
   }
+}
 
   Future<void> addBooking(String userEmail, Booking booking) async {
     try {
@@ -123,67 +111,67 @@ class FirestoreService {
             .toList());
   }
 
-  Future<List<Booking>> fetchBookingsOnce(String userEmail) async {
+Future<List<Booking>> fetchBookingsOnce(String userEmail, {DateTime? startDate, DateTime? endDate}) async {
+  try {
+    var query = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userEmail)
+        .collection('bookings')
+        .orderBy('date', descending: false);
+
+    // Apply date range filters if provided
+  if (startDate != null) {
+  final adjustedStartDate = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+  query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(adjustedStartDate));
+}
+if (endDate != null) {
+  final adjustedEndDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+  query = query.where('date', isLessThanOrEqualTo: Timestamp.fromDate(adjustedEndDate));
+}
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) {
+          try {
+            return Booking.fromMap(doc.id, doc.data());
+          } catch (e) {
+            debugPrint('Error parsing booking ${doc.id} for $userEmail: $e');
+            return null;
+          }
+        })
+        .where((booking) => booking != null)
+        .cast<Booking>()
+        .toList();
+  } catch (e) {
+    debugPrint('Error fetching bookings for $userEmail: $e');
+    rethrow;
+  }
+}
+
+ Future<void> updateBooking(String userEmail, String bookingId, Booking booking) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(userEmail)
           .collection('bookings')
-          .get();
-      return snapshot.docs
-          .map((doc) {
-            try {
-              return Booking.fromMap(doc.id, doc.data());
-            } catch (e) {
-              debugPrint('Error parsing booking ${doc.id} for $userEmail: $e');
-              return null;
-            }
-          })
-          .where((booking) => booking != null)
-          .cast<Booking>()
-          .toList();
+          .doc(bookingId)
+          .update(booking.toMap());
     } catch (e) {
-      debugPrint('Error fetching bookings for $userEmail: $e');
+      debugPrint('Error updating booking $bookingId for $userEmail: $e');
       rethrow;
     }
   }
 
-  Future<void> updateBooking(String userEmail, int index, Booking booking) async {
+  Future<void> deleteBooking(String userEmail, String bookingId) async {
     try {
-      final bookings = await getBookings(userEmail).first;
-      if (index >= 0 && index < bookings.length) {
-        final id = bookings[index].id;
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('bookings')
-            .doc(id)
-            .update(booking.toMap());
-      } else {
-        throw Exception('Invalid index: $index');
-      }
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('bookings')
+          .doc(bookingId)
+          .delete();
     } catch (e) {
-      debugPrint('Error updating booking for $userEmail: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteBooking(String userEmail, int index) async {
-    try {
-      final bookings = await getBookings(userEmail).first;
-      if (index >= 0 && index < bookings.length) {
-        final id = bookings[index].id;
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('bookings')
-            .doc(id)
-            .delete();
-      } else {
-        throw Exception('Invalid index: $index');
-      }
-    } catch (e) {
-      debugPrint('Error deleting booking for $userEmail: $e');
+      debugPrint('Error deleting booking $bookingId for $userEmail: $e');
       rethrow;
     }
   }

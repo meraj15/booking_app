@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ExpenseItem extends StatelessWidget {
-  final int index;
+  final int index; // Kept for display purposes (e.g., CircleAvatar)
   final Expenses expense;
   final String dateText;
+
   const ExpenseItem({
     super.key,
     required this.index,
@@ -31,60 +32,64 @@ class ExpenseItem extends StatelessWidget {
             if (value == 'edit') {
               showDialog(
                 context: context,
-                builder: (_) => ExpensesDialog(index: index, expenses: expense),
+                builder: (_) => ExpensesDialog(expense: expense),
               );
             } else if (value == 'delete') {
               final confirm = await showDialog<bool>(
                 context: context,
-                builder:
-                    (context) => AlertDialog(
-                      title: const Text('Delete Expense'),
-                      content: const Text(
-                        'Are you sure you want to delete this expense?',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: AppColor.redColor),
-                          ),
-                        ),
-                      ],
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Expense'),
+                  content: const Text(
+                    'Are you sure you want to delete this expense?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
                     ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: AppColor.redColor),
+                      ),
+                    ),
+                  ],
+                ),
               );
               if (confirm == true) {
-                viewModel.deleteExpenses(index);
+                try {
+                  await viewModel.deleteExpenses(expense.id);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete expense: $e')),
+                  );
+                }
               }
             }
           },
-          itemBuilder:
-              (context) => [
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, color: AppColor.primary),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: AppColor.redColor),
-                      SizedBox(width: 8),
-                      Text('Delete'),
-                    ],
-                  ),
-                ),
-              ],
+          itemBuilder: (context) => [
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: AppColor.primary),
+                  SizedBox(width: 8),
+                  Text('Edit'),
+                ],
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete, color: AppColor.redColor),
+                  SizedBox(width: 8),
+                  Text('Delete'),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

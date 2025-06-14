@@ -1,5 +1,6 @@
 import 'package:booking_app/constants/app_color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For inputFormatters
 
 class BookingTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -13,6 +14,8 @@ class BookingTextField extends StatelessWidget {
   final VoidCallback? onMicPressed;
   final bool readOnly;
   final VoidCallback? onTap;
+  final TextInputType? keyboardType; 
+  final List<TextInputFormatter>? inputFormatters; 
 
   const BookingTextField({
     super.key,
@@ -27,6 +30,8 @@ class BookingTextField extends StatelessWidget {
     this.onMicPressed,
     this.readOnly = false,
     this.onTap,
+    this.keyboardType, // New
+    this.inputFormatters, // New
   });
 
   @override
@@ -37,6 +42,8 @@ class BookingTextField extends StatelessWidget {
       onTap: onTap,
       validator: validator,
       onChanged: onChanged,
+      keyboardType: keyboardType, 
+      inputFormatters: inputFormatters, 
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,
@@ -50,7 +57,7 @@ class BookingTextField extends StatelessWidget {
                   child: Icon(
                     Icons.mic,
                     color: isListening ? AppColor.redColor : AppColor.primary,
-                    size: isListening ? 24 : 20, 
+                    size: isListening ? 24 : 20,
                   ),
                 ),
               )

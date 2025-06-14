@@ -190,7 +190,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
                             final expense = expensesList[index];
                             final dateFormat = DateFormat('dd MMM');
                             final dateText = expense.toDate != null
-                                ? '${dateFormat.format(expense.fromDate)} and ${dateFormat.format(expense.toDate!)}'
+                                ? '${dateFormat.format(expense.fromDate)} to ${dateFormat.format(expense.toDate!)}'
                                 : dateFormat.format(expense.fromDate);
                             return ExpenseItem(
                               index: index,

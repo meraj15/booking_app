@@ -21,11 +21,25 @@ class BookingViewModel extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   GoogleSignInAccount? _user;
 
-  BookingViewModel() {
-    _filterStartDate = DateTime(2025, 1, 1);
-    _filterEndDate = DateTime(2025, 12, 31);
-    _fetchBookings();
-  }
+BookingViewModel() {
+  _filterStartDate = DateTime(2025, 1, 1);
+  _filterEndDate = DateTime(2025, 12, 31);
+  googleSignIn.isSignedIn().then((isSignedIn) async {
+    if (isSignedIn) {
+      try {
+        _user = await googleSignIn.signInSilently();
+        if (_user != null) {
+          _fetchBookings();
+          _fetchOrganizers();
+          notifyListeners();
+        }
+      } catch (e) {
+        debugPrint('Error restoring sign-in: $e');
+      }
+    }
+    _fetchBookings(); 
+  });
+}
 
   final GoogleSignIn googleSignIn = GoogleSignIn();
 
@@ -73,24 +87,25 @@ class BookingViewModel extends ChangeNotifier {
   }
 
   void _fetchBookings() {
-    if (_user?.email == null) {
-      _bookingsStreamController.add([]);
-      return;
-    }
-    _bookingSubscription?.cancel();
-    _bookingSubscription = _firestoreService
-        .getBookings(_user!.email)
-        .map((bookings) => bookings
-            .where((b) =>
-                b.date.isAfter(_filterStartDate ?? DateTime(2000)) &&
-                b.date.isBefore(_filterEndDate ?? DateTime(2100)))
-            .toList()
-              ..sort((a, b) => a.date.compareTo(b.date)))
-        .listen(_bookingsStreamController.add, onError: (e) {
-          debugPrint('Error fetching bookings: $e');
-          _bookingsStreamController.addError(e);
-        });
+  if (_user?.email == null) {
+    _bookingsStreamController.add([]);
+    return;
   }
+  _bookingSubscription?.cancel();
+  _bookingSubscription = _firestoreService
+      .getBookings(_user!.email)
+      .map((bookings) => bookings
+          .where((b) =>
+              (b.date.isAtSameMomentAs(_filterStartDate ?? DateTime(2000)) ||
+                  b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
+              (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(Duration(days: 1)))))
+          .toList()
+            ..sort((a, b) => a.date.compareTo(b.date)))
+      .listen(_bookingsStreamController.add, onError: (e) {
+        debugPrint('Error fetching bookings: $e');
+        _bookingsStreamController.addError(e);
+      });
+}
 
   Future<void> addBooking(Booking booking) async {
     if (_user?.email == null) throw Exception('User not authenticated');
@@ -113,10 +128,10 @@ class BookingViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateBooking(int index, Booking booking) async {
+  Future<void> updateBooking(String bookingId, Booking booking) async {
     if (_user?.email == null) throw Exception('User not authenticated');
     try {
-      await _firestoreService.updateBooking(_user!.email, index, booking);
+      await _firestoreService.updateBooking(_user!.email, bookingId, booking);
       _fetchOrganizers();
       notifyListeners();
     } catch (e) {
@@ -125,10 +140,10 @@ class BookingViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteBooking(int index) async {
+  Future<void> deleteBooking(String bookingId) async {
     if (_user?.email == null) throw Exception('User not authenticated');
     try {
-      await _firestoreService.deleteBooking(_user!.email, index);
+      await _firestoreService.deleteBooking(_user!.email, bookingId);
       _fetchOrganizers();
       notifyListeners();
     } catch (e) {

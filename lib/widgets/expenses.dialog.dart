@@ -1,19 +1,18 @@
 import 'package:booking_app/constants/app_color.dart';
-import 'package:booking_app/constants/constants.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:booking_app/widgets/text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For inputFormatters
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class ExpensesDialog extends StatefulWidget {
-  final String? id;
-  final int? index;
-  final Expenses? expenses;
+  final Expenses? expense;
 
-  const ExpensesDialog({super.key, this.id, this.index, this.expenses});
+  const ExpensesDialog({super.key, this.expense});
 
   @override
   _ExpensesDialogState createState() => _ExpensesDialogState();
@@ -26,6 +25,8 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   late TextEditingController _priceController;
   DateTime? _fromDate;
   DateTime? _toDate;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
 
   static final _firstDate = DateTime(2025);
   static final _lastDate = DateTime(2026);
@@ -34,8 +35,9 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   @override
   void initState() {
     super.initState();
-    _fromDate = widget.expenses?.fromDate ?? DateTime.now();
-    _toDate = widget.expenses?.toDate;
+    _speech = stt.SpeechToText();
+    _fromDate = widget.expense?.fromDate ?? DateTime.now();
+    _toDate = widget.expense?.toDate;
 
     _fromDateController = TextEditingController(
       text: _fromDate != null ? _dateFormat.format(_fromDate!) : '',
@@ -44,7 +46,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
       text: _toDate != null ? _dateFormat.format(_toDate!) : '',
     );
     _priceController = TextEditingController(
-      text: widget.expenses?.price.toString() ?? '',
+      text: widget.expense?.price.toInt().toString() ?? '', // Convert to int
     );
     debugPrint(
       'ExpensesDialog initialized with fromDate: ${_fromDateController.text}, '
@@ -100,33 +102,72 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
     debugPrint('Cleared to date');
   }
 
-  Future<void> _addExpenses(BuildContext context) async {
-    final bookingViewModel = context.read<BookingViewModel>();
-    if (bookingViewModel.user?.email == null) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to add an expense')),
+  Future<void> _toggleListening(BuildContext context) async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+          if (status == 'done' || status == 'notListening') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          debugPrint('Speech error: $error');
+          setState(() => _isListening = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Speech recognition error: ${error.errorMsg}')),
+          );
+        },
       );
-      return;
+      if (available) {
+        setState(() => _isListening = true);
+        FocusScope.of(context).unfocus();
+        _speech.listen(
+          onResult: (result) {
+            final cleanedText = result.recognizedWords.replaceAll(RegExp(r'[^0-9]'), '');
+            setState(() {
+              _priceController.text = cleanedText.isNotEmpty ? cleanedText : '';
+            });
+            debugPrint('Recognized: ${result.recognizedWords}, Cleaned: $cleanedText');
+            if (cleanedText.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please say a valid integer number')),
+              );
+            }
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available')),
+        );
+      }
+    } else {
+      _speech.stop();
+      setState(() => _isListening = false);
     }
+  }
+
+  Future<void> _saveExpense(BuildContext context) async {
+   
 
     if (_formKey.currentState!.validate()) {
-      final price = double.parse(_priceController.text.trim());
+      final priceText = _priceController.text.trim();
+      final price = int.tryParse(priceText) ?? 0;
       final viewModel = context.read<ExpensesViewModel>();
-      final newExpenses = Expenses(
-        id: widget.id ?? '',
-        price: price,
+      final newExpense = Expenses(
+        id: widget.expense?.id ?? '',
+        price: price.toDouble(), // Store as int
         fromDate: _fromDate!,
         toDate: _toDate,
       );
 
       try {
-        if (widget.index != null) {
-          await viewModel.updateExpenses(widget.index!, newExpenses);
-          debugPrint('Expense updated for ${bookingViewModel.user!.email}: ${newExpenses.toMap()}');
+        if (widget.expense != null) {
+          await viewModel.updateExpenses(newExpense.id, newExpense);
+          
         } else {
-          await viewModel.addExpense(newExpenses);
-          debugPrint('Expense added for ${bookingViewModel.user!.email}: ${newExpenses.toMap()}');
+          await viewModel.addExpense(newExpense);
+         
         }
         Navigator.pop(context);
       } catch (e) {
@@ -146,21 +187,12 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bookingViewModel = context.watch<BookingViewModel>();
 
-    if (bookingViewModel.user?.email == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to add an expense')),
-        );
-      });
-      return const SizedBox.shrink();
-    }
+   
 
     return AlertDialog(
       title: Text(
-        widget.index != null ? 'Update Expense' : 'Add Expense',
+        widget.expense != null ? 'Update Expense' : 'Add Expense',
         style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
       ),
       content: Form(
@@ -177,8 +209,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
                 icon: Icons.calendar_today,
                 readOnly: true,
                 onTap: () => _selectFromDate(context),
-                validator: (value) =>
-                    _fromDate == null ? 'Please select a from date' : null,
+                validator: (value) => _fromDate == null ? 'Please select a from date' : null,
               ),
               const SizedBox(height: 18.0),
               Row(
@@ -210,22 +241,41 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
                 ],
               ),
               const SizedBox(height: 18.0),
-              BookingTextField(
-                controller: _priceController,
-                labelText: 'Price',
-                hintText: 'Enter price in rupees',
-                icon: Icons.money,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a price';
-                  }
-                  if (double.tryParse(value.trim()) == null ||
-                      double.parse(value.trim()) <= 0) {
-                    return 'Please enter a valid positive price';
-                  }
-                  return null;
-                },
-                onChanged: (value) => _priceController.text = value,
+              Row(
+                children: [
+                  Expanded(
+                    child: BookingTextField(
+                      controller: _priceController,
+                      labelText: 'Price',
+                      hintText: 'Enter price in rupees (integer only)',
+                      icon: Icons.money,
+                      readOnly: _isListening,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly, 
+                      ],
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a price';
+                        }
+                        final cleanedValue = value.trim();
+                        if (int.tryParse(cleanedValue) == null || int.parse(cleanedValue) <= 0) {
+                          return 'Please enter a valid positive integer';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => _priceController.text = value,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? AppColor.redColor : AppColor.primary,
+                    ),
+                    onPressed: () => _toggleListening(context),
+                    tooltip: _isListening ? 'Stop Listening' : 'Start Listening',
+                  ),
+                ],
               ),
             ],
           ),
@@ -243,7 +293,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
           ),
         ),
         ElevatedButton(
-          onPressed: () => _addExpenses(context),
+          onPressed: () => _saveExpense(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColor.primary,
             foregroundColor: AppColor.whiteColor,
@@ -251,7 +301,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
               borderRadius: BorderRadius.circular(8.0),
             ),
           ),
-          child: Text(widget.index == null ? 'Add' : 'Update'),
+          child: Text(widget.expense == null ? 'Add' : 'Update'),
         ),
       ],
     );

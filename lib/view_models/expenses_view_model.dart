@@ -65,27 +65,27 @@ class ExpensesViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateExpenses(int index, Expenses expense) async {
-    if (_userEmail == null) throw Exception('User not authenticated');
-    try {
-      await _firestoreService.updateExpense(_userEmail!, index, expense);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error updating expense: $e');
-      throw e;
-    }
+  Future<void> updateExpenses(String id, Expenses expense) async {
+  if (_userEmail == null) throw Exception('User not authenticated');
+  try {
+    await _firestoreService.updateExpense(_userEmail!, id, expense);
+    notifyListeners();
+  } catch (e) {
+    debugPrint('Error updating expense: $e');
+    rethrow;
   }
+}
 
-  Future<void> deleteExpenses(int index) async {
-    if (_userEmail == null) throw Exception('User not authenticated');
-    try {
-      await _firestoreService.deleteExpense(_userEmail!, index);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error deleting expense: $e');
-      throw e;
-    }
+Future<void> deleteExpenses(String id) async {
+  if (_userEmail == null) throw Exception('User not authenticated');
+  try {
+    await _firestoreService.deleteExpense(_userEmail!, id);
+    notifyListeners();
+  } catch (e) {
+    debugPrint('Error deleting expense: $e');
+    rethrow;
   }
+}
 
   @override
   void dispose() {

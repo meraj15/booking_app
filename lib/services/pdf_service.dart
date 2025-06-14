@@ -11,8 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:provider/provider.dart';
 import 'dart:io';
+
+import 'package:provider/provider.dart';
 
 class PdfService {
   static final _dateFormat = DateFormat(ConstantsString.dateFormat);
@@ -35,24 +36,37 @@ class PdfService {
   static Future<List<Booking>> _fetchBookings(BuildContext context) async {
     final bookingViewModel = context.read<BookingViewModel>();
     final userEmail = bookingViewModel.user?.email;
+    final startDate = bookingViewModel.filterStartDate;
+    final endDate = bookingViewModel.filterEndDate;
     if (userEmail == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      debugPrint('Fetching bookings for PDF...');
+      debugPrint('Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
+      // Bookings from stream are already filtered by BookingViewModel
       final bookings = await bookingViewModel.bookings.first.timeout(
         const Duration(seconds: 5),
         onTimeout: () async {
           debugPrint('Stream timed out, using fetchBookingsOnce');
-          return await _firestoreService.fetchBookingsOnce(userEmail);
+          return await _firestoreService.fetchBookingsOnce(
+            userEmail,
+            startDate: startDate,
+            endDate: endDate,
+          );
         },
       );
-      return bookings.isEmpty ? [] : bookings;
+      // Ensure sorting by date ascending
+      return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       debugPrint('Booking fetch error: $e');
-      final bookings = await _firestoreService.fetchBookingsOnce(userEmail);
-      return bookings.isEmpty ? [] : bookings;
+      final bookings = await _firestoreService.fetchBookingsOnce(
+        userEmail,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      // Ensure sorting by date ascending
+      return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
     }
   }
 
@@ -86,7 +100,7 @@ class PdfService {
 
     if (bookings.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No bookings available to generate PDF')),
+        const SnackBar(content: Text('No bookings available in the selected date range')),
       );
       return;
     }
@@ -118,7 +132,7 @@ class PdfService {
                 ),
               ],
             ),
-            pw.SizedBox(height: 20),
+            pw.SizedBox( height: 20),
             pw.Text('Bookings:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
             pw.SizedBox(height: 4),
             pw.Table(

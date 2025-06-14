@@ -5,6 +5,7 @@ import 'package:booking_app/services/pdf_service.dart';
 import 'package:booking_app/view/auth_screen.dart';
 import 'package:booking_app/view/expenses_screen.dart';
 import 'package:booking_app/widgets/booking_item.dart';
+import 'package:booking_app/widgets/drawer.dart';
 import 'package:booking_app/widgets/filter_date_selection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -33,8 +34,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
     super.initState();
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    _startDateController.text = DateFormat(ConstantsString.dateFormat).format(startOfMonth);
-    _endDateController.text = DateFormat(ConstantsString.dateFormat).format(now);
+    _startDateController.text = DateFormat(
+      ConstantsString.dateFormat,
+    ).format(startOfMonth);
+    _endDateController.text = DateFormat(
+      ConstantsString.dateFormat,
+    ).format(now);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -59,11 +64,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
       lastDate: _lastDate,
     );
     if (picked != null) {
-      _startDateController.text = DateFormat(ConstantsString.dateFormat).format(picked);
+      _startDateController.text = DateFormat(
+        ConstantsString.dateFormat,
+      ).format(picked);
       viewModel.filterBookings(startDate: picked);
-      if (viewModel.filterEndDate != null && picked.isAfter(viewModel.filterEndDate!)) {
+      if (viewModel.filterEndDate != null &&
+          picked.isAfter(viewModel.filterEndDate!)) {
         final newEndDate = picked;
-        _endDateController.text = DateFormat(ConstantsString.dateFormat).format(newEndDate);
+        _endDateController.text = DateFormat(
+          ConstantsString.dateFormat,
+        ).format(newEndDate);
         viewModel.filterBookings(endDate: newEndDate);
       }
       _formKey.currentState?.validate();
@@ -73,7 +83,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Future<void> _selectEndDate(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
     DateTime initialDate = viewModel.filterEndDate ?? DateTime.now();
-    if (viewModel.filterStartDate != null && initialDate.isBefore(viewModel.filterStartDate!)) {
+    if (viewModel.filterStartDate != null &&
+        initialDate.isBefore(viewModel.filterStartDate!)) {
       initialDate = viewModel.filterStartDate!;
     }
     final picked = await showDatePicker(
@@ -83,7 +94,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
       lastDate: _lastDate,
     );
     if (picked != null) {
-      _endDateController.text = DateFormat(ConstantsString.dateFormat).format(picked);
+      _endDateController.text = DateFormat(
+        ConstantsString.dateFormat,
+      ).format(picked);
       viewModel.filterBookings(endDate: picked);
       _formKey.currentState?.validate();
     }
@@ -92,9 +105,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Future<void> _handleGeneratePdf(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
     if (!viewModel.isSharedPdf) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF sharing is disabled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF sharing is disabled')));
       return;
     }
 
@@ -107,7 +120,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate PDF: ${e.toString().split(':').last.trim()}')),
+        SnackBar(
+          content: Text(
+            'Failed to generate PDF: ${e.toString().split(':').last.trim()}',
+          ),
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -128,12 +145,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
         title: const Text(ConstantsString.appBarName),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
+
         actions: [
           IconButton(
             icon: const Icon(Icons.money),
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const BookingExpensesScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const BookingExpensesScreen(),
+                ),
               );
             },
           ),
@@ -141,24 +161,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
             icon: const Icon(Icons.picture_as_pdf),
             onPressed: () => _handleGeneratePdf(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              try {
-                await viewModel.signOut();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AuthScreen()),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error signing out: $e')),
-                );
-              }
-            },
-          ),
         ],
       ),
+      drawer:AppDrawer(),
       body: Stack(
         children: [
           Column(
@@ -191,7 +196,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   stream: viewModel.bookings,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: AppColor.primary));
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColor.primary,
+                        ),
+                      );
                     }
                     if (snapshot.hasError) {
                       debugPrint('Bookings stream error: ${snapshot.error}');
@@ -199,14 +208,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     }
                     final bookings = snapshot.data ?? [];
                     return bookings.isEmpty
-                        ? const Center(child: Text(ConstantsString.bookingNotFound))
+                        ? const Center(
+                          child: Text(ConstantsString.bookingNotFound),
+                        )
                         : ListView.builder(
-                            itemCount: bookings.length,
-                            itemBuilder: (context, index) {
-                              final booking = bookings[index];
-                              return BookingItem(index: index, booking: booking);
-                            },
-                          );
+                          itemCount: bookings.length,
+                          itemBuilder: (context, index) {
+                            final booking = bookings[index];
+                            return BookingItem(booking: booking);
+                          },
+                        );
                   },
                 ),
               ),
