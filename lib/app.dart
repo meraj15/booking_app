@@ -38,6 +38,11 @@ class MyApp extends StatelessWidget {
 
         home: Consumer<BookingViewModel>(
           builder: (context, viewModel, _) {
+            if (viewModel.isCheckingAuth) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
             return viewModel.user != null
                 ? const BookingsScreen()
                 : const AuthScreen();

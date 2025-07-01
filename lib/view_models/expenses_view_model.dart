@@ -15,7 +15,8 @@ class ExpensesViewModel extends ChangeNotifier {
 
   DateTime? get filterStartDate => _filterStartDate;
   DateTime? get filterEndDate => _filterEndDate;
-
+  String? get userEmail => _userEmail;
+  
   void setUserEmail(String? email) {
     if (_userEmail != email) {
       _userEmail = email;

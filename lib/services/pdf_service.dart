@@ -3,6 +3,7 @@ import 'package:booking_app/models/booking.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/services/firestore_service.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
+import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -84,30 +85,32 @@ class PdfService {
     }
   }
 
-  static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
-    final bookingViewModel = context.read<BookingViewModel>();
-    final userEmail = bookingViewModel.user?.email;
-    final startDate = bookingViewModel.filterStartDate;
-    final endDate = bookingViewModel.filterEndDate;
+ static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
+  final expensesViewModel = context.read<ExpensesViewModel>();
+  final userEmail = expensesViewModel.userEmail; // or use expensesViewModel.user?.email if you store user there
+  final startDate = expensesViewModel.filterStartDate;
+  final endDate = expensesViewModel.filterEndDate;
 
-    if (userEmail == null) {
-      throw Exception('User not authenticated');
-    }
-
-    try {
-      debugPrint('Fetching expenses for PDF directly from Firestore...');
-      final expenses = await FirestoreService().getExpenses(
-        userEmail: userEmail,
-        startDate: startDate,
-        endDate: endDate,
-      ).first;
-      debugPrint('Fetched ${expenses.length} expenses from Firestore');
-      return expenses;
-    } catch (e) {
-      debugPrint('Expenses fetch error: $e');
-      return [];
-    }
+  if (userEmail == null) {
+    throw Exception('User not authenticated');
   }
+
+  try {
+    debugPrint('Fetching expenses for PDF directly from Firestore...');
+    final expenses = await FirestoreService().getExpenses(
+      userEmail: userEmail,
+      startDate: startDate,
+      endDate: endDate,
+    ).first;
+
+    debugPrint('Fetched ${expenses.length} expenses from Firestore');
+    return expenses;
+  } catch (e) {
+    debugPrint('Expenses fetch error: $e');
+    return [];
+  }
+}
+
 
   static Future<void> generateBookingsPdf(BuildContext context) async {
     final bookingViewModel = context.read<BookingViewModel>();
@@ -249,9 +252,10 @@ class PdfService {
       return;
     }
 
-    final bookingViewModel = context.read<BookingViewModel>();
-    final startDate = bookingViewModel.filterStartDate ?? DateTime.now();
-    final endDate = bookingViewModel.filterEndDate ?? DateTime.now();
+   final expensesViewModel = context.read<ExpensesViewModel>();
+   final startDate = expensesViewModel.filterStartDate ?? DateTime.now();
+   final endDate = expensesViewModel.filterEndDate ?? DateTime.now();
+
 
     try {
       final pdf = pw.Document();

@@ -8,6 +8,7 @@ class BookingViewModel extends ChangeNotifier {
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
   bool isSharedPdf = true;
+  bool isCheckingAuth = true; // ✅ Add this flag
   StreamSubscription? _bookingSubscription;
   final _bookingsStreamController = StreamController<List<Booking>>.broadcast();
   List<String> _organizers = ['Ramzaan', 'Irfan', 'Other'];
@@ -21,27 +22,33 @@ class BookingViewModel extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   GoogleSignInAccount? _user;
 
-BookingViewModel() {
-  _filterStartDate = DateTime(2025, 1, 1);
-  _filterEndDate = DateTime(2025, 12, 31);
-  googleSignIn.isSignedIn().then((isSignedIn) async {
-    if (isSignedIn) {
-      try {
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+
+  BookingViewModel() {
+    _filterStartDate = DateTime(2025, 1, 1);
+    _filterEndDate = DateTime(2025, 12, 31);
+
+    // Start checking sign-in state
+    _checkInitialSignIn();
+  }
+
+  Future<void> _checkInitialSignIn() async {
+    try {
+      final isSignedIn = await googleSignIn.isSignedIn();
+      if (isSignedIn) {
         _user = await googleSignIn.signInSilently();
         if (_user != null) {
           _fetchBookings();
           _fetchOrganizers();
-          notifyListeners();
         }
-      } catch (e) {
-        debugPrint('Error restoring sign-in: $e');
       }
+    } catch (e) {
+      debugPrint('Error restoring sign-in: $e');
+    } finally {
+      isCheckingAuth = false; // ✅ Mark as done
+      notifyListeners();
     }
-    _fetchBookings(); 
-  });
-}
-
-  final GoogleSignIn googleSignIn = GoogleSignIn();
+  }
 
   Future<void> googleLogin() async {
     try {
@@ -75,7 +82,7 @@ BookingViewModel() {
       final bookings = await _firestoreService.fetchBookingsOnce(_user!.email);
       final customOrganizers = bookings
           .map((b) => b.organizer)
-          .where((o) => o != null && o.isNotEmpty && o != 'Ramzaan' && o != 'Irfan') // Exclude defaults
+          .where((o) => o != null && o.isNotEmpty && o != 'Ramzaan' && o != 'Irfan')
           .cast<String>()
           .toSet()
           .toList();
@@ -87,25 +94,25 @@ BookingViewModel() {
   }
 
   void _fetchBookings() {
-  if (_user?.email == null) {
-    _bookingsStreamController.add([]);
-    return;
+    if (_user?.email == null) {
+      _bookingsStreamController.add([]);
+      return;
+    }
+    _bookingSubscription?.cancel();
+    _bookingSubscription = _firestoreService
+        .getBookings(_user!.email)
+        .map((bookings) => bookings
+            .where((b) =>
+                (b.date.isAtSameMomentAs(_filterStartDate ?? DateTime(2000)) ||
+                    b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
+                (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(Duration(days: 1)))))
+            .toList()
+              ..sort((a, b) => a.date.compareTo(b.date)))
+        .listen(_bookingsStreamController.add, onError: (e) {
+          debugPrint('Error fetching bookings: $e');
+          _bookingsStreamController.addError(e);
+        });
   }
-  _bookingSubscription?.cancel();
-  _bookingSubscription = _firestoreService
-      .getBookings(_user!.email)
-      .map((bookings) => bookings
-          .where((b) =>
-              (b.date.isAtSameMomentAs(_filterStartDate ?? DateTime(2000)) ||
-                  b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
-              (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(Duration(days: 1)))))
-          .toList()
-            ..sort((a, b) => a.date.compareTo(b.date)))
-      .listen(_bookingsStreamController.add, onError: (e) {
-        debugPrint('Error fetching bookings: $e');
-        _bookingsStreamController.addError(e);
-      });
-}
 
   Future<void> addBooking(Booking booking) async {
     if (_user?.email == null) throw Exception('User not authenticated');
@@ -115,7 +122,6 @@ BookingViewModel() {
         date: booking.date,
         location: booking.location,
         owner: booking.owner,
-        // userEmail: _user!.email,
         dayNight: booking.dayNight,
         organizer: booking.organizer,
       );

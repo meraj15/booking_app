@@ -139,22 +139,22 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
             onPressed: () => _handleGenerateExpensesPdf(context),
             tooltip: 'Generate PDF',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              try {
-                await bookingViewModel.signOut();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AuthScreen()),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error signing out: $e')),
-                );
-              }
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.logout),
+          //   onPressed: () async {
+          //     try {
+          //       await bookingViewModel.signOut();
+          //       Navigator.pushReplacement(
+          //         context,
+          //         MaterialPageRoute(builder: (_) => const AuthScreen()),
+          //       );
+          //     } catch (e) {
+          //       ScaffoldMessenger.of(context).showSnackBar(
+          //         SnackBar(content: Text('Error signing out: $e')),
+          //       );
+          //     }
+          //   },
+          // ),
         ],
       ),
       body: Column(
