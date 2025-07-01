@@ -1,5 +1,5 @@
-import 'package:booking_app/constants/app_color.dart';
-import 'package:booking_app/constants/constants.dart';
+import 'package:booking_app/constant/app_color.dart';
+import 'package:booking_app/constant/app_constant_string.dart';
 import 'package:booking_app/widgets/booking_type_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -336,7 +336,7 @@ class _BookingDialogState extends State<BookingDialog> {
           onPressed: () => _saveBooking(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColor.primary,
-            foregroundColor: AppColor.whiteColor,
+            foregroundColor: AppColor.secondary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
           ),
           child: Text(widget.isDuplicate ? 'Add' : widget.bookingId == null ? 'Add' : 'Update'),

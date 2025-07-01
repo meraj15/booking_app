@@ -1,5 +1,5 @@
-import 'package:booking_app/constants/app_color.dart';
-import 'package:booking_app/constants/constants.dart';
+import 'package:booking_app/constant/app_color.dart';
+import 'package:booking_app/constant/app_constant_string.dart';
 import 'package:booking_app/models/booking.dart';
 import 'package:booking_app/services/pdf_service.dart';
 import 'package:booking_app/view/auth_screen.dart';
@@ -17,6 +17,7 @@ class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _BookingsScreenState createState() => _BookingsScreenState();
 }
 

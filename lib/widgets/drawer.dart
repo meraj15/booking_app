@@ -1,4 +1,4 @@
-import 'package:booking_app/constants/app_color.dart';
+import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +23,7 @@ class AppDrawer extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 40,
-                    backgroundColor: AppColor.whiteColor,
+                    backgroundColor: AppColor.secondary,
                     child: Text(
                       viewModel.user?.displayName?.isNotEmpty == true
                           ? viewModel.user!.displayName![0].toUpperCase()

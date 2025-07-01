@@ -1,4 +1,4 @@
-import 'package:booking_app/constants/app_color.dart';
+import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:booking_app/widgets/expenses.dialog.dart';
@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ExpenseItem extends StatelessWidget {
-  final int index; // Kept for display purposes (e.g., CircleAvatar)
+  final int index; 
   final Expenses expense;
   final String dateText;
 

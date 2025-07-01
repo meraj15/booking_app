@@ -1,6 +1,5 @@
-import 'package:booking_app/constants/app_color.dart';
+import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/models/expenses.dart';
-import 'package:booking_app/view_models/booking_view_model.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:booking_app/widgets/text_field.dart';
 import 'package:flutter/material.dart';
@@ -296,7 +295,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
           onPressed: () => _saveExpense(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColor.primary,
-            foregroundColor: AppColor.whiteColor,
+            foregroundColor: AppColor.secondary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),

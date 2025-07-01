@@ -1,4 +1,4 @@
-import 'package:booking_app/constants/constants.dart';
+import 'package:booking_app/constant/app_constant_string.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/services/pdf_service.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
@@ -123,7 +123,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bookingViewModel = context.watch<BookingViewModel>();
-
+ final expenseViewModel = context.watch<ExpensesViewModel>();
     if (bookingViewModel.user == null) {
       return const AuthScreen();
     }
@@ -158,6 +158,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
         ],
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FilterSection(
             startDateController: _startDateController,
@@ -165,6 +166,30 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
             onStartDateTap: () => _selectStartDate(context),
             onEndDateTap: () => _selectEndDate(context),
           ),
+         Padding(
+  padding: const EdgeInsets.all(8.0),
+  child: StreamBuilder<List<Expenses>>(
+    stream: expenseViewModel.expenses,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        debugPrint('Expense stream error: ${snapshot.error}');
+      }
+      final expenses = snapshot.data ?? [];
+
+      // Calculate the total amount
+      final totalAmount = expenses.fold<double>(
+        0.0,
+        (previousValue, element) => previousValue + (element.price),
+      );
+
+      return Text(
+        "Total Amount: \$${totalAmount.toStringAsFixed(2)}",
+        style: const TextStyle(fontSize: 16),
+      );
+    },
+  ),
+),
+
           Expanded(
             child: Stack(
               children: [

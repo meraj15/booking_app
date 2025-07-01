@@ -1,4 +1,4 @@
-import 'package:booking_app/constants/app_color.dart';
+import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

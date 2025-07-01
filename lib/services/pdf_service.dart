@@ -1,9 +1,8 @@
-import 'package:booking_app/constants/constants.dart';
+import 'package:booking_app/constant/app_constant_string.dart';
 import 'package:booking_app/models/booking.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/services/firestore_service.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
-import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +16,7 @@ import 'package:provider/provider.dart';
 
 class PdfService {
   static final _dateFormat = DateFormat(ConstantsString.dateFormat);
+  // static final _monthFormat = DateFormat('MMMM yyyy'); // e.g., June 2024
   static final _firestoreService = FirestoreService();
 
   static void _handleError(BuildContext context, String error, String type) {
@@ -33,6 +33,23 @@ class PdfService {
     );
   }
 
+ static String buildDateRangeLabel(DateTime start, DateTime end) {
+  final startMonth = DateFormat('MMMM').format(start);
+  final endMonth = DateFormat('MMMM').format(end);
+
+  if (start.year == end.year) {
+    if (start.month == end.month) {
+      return '$startMonth ${start.year}';
+    } else {
+      return '$startMonth - $endMonth ${start.year}';
+    }
+  } else {
+    return '$startMonth ${start.year} - $endMonth ${end.year}';
+  }
+}
+
+
+
   static Future<List<Booking>> _fetchBookings(BuildContext context) async {
     final bookingViewModel = context.read<BookingViewModel>();
     final userEmail = bookingViewModel.user?.email;
@@ -44,7 +61,6 @@ class PdfService {
 
     try {
       debugPrint('Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
-      // Bookings from stream are already filtered by BookingViewModel
       final bookings = await bookingViewModel.bookings.first.timeout(
         const Duration(seconds: 5),
         onTimeout: () async {
@@ -56,7 +72,6 @@ class PdfService {
           );
         },
       );
-      // Ensure sorting by date ascending
       return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       debugPrint('Booking fetch error: $e');
@@ -65,7 +80,6 @@ class PdfService {
         startDate: startDate,
         endDate: endDate,
       );
-      // Ensure sorting by date ascending
       return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
     }
   }
@@ -73,24 +87,25 @@ class PdfService {
   static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
     final bookingViewModel = context.read<BookingViewModel>();
     final userEmail = bookingViewModel.user?.email;
+    final startDate = bookingViewModel.filterStartDate;
+    final endDate = bookingViewModel.filterEndDate;
+
     if (userEmail == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      debugPrint('Fetching expenses for PDF...');
-      final expenses = await context.read<ExpensesViewModel>().expenses.first.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () async {
-          debugPrint('Stream timed out, using fetchExpensesOnce');
-          return await _firestoreService.getExpenses(userEmail: userEmail).first;
-        },
-      );
-      return expenses.isEmpty ? [] : expenses;
+      debugPrint('Fetching expenses for PDF directly from Firestore...');
+      final expenses = await FirestoreService().getExpenses(
+        userEmail: userEmail,
+        startDate: startDate,
+        endDate: endDate,
+      ).first;
+      debugPrint('Fetched ${expenses.length} expenses from Firestore');
+      return expenses;
     } catch (e) {
       debugPrint('Expenses fetch error: $e');
-      final expenses = await _firestoreService.getExpenses(userEmail: userEmail).first;
-      return expenses.isEmpty ? [] : expenses;
+      return [];
     }
   }
 
@@ -105,10 +120,11 @@ class PdfService {
       return;
     }
 
+    final startDate = bookingViewModel.filterStartDate ?? DateTime.now();
+    final endDate = bookingViewModel.filterEndDate ?? DateTime.now();
+
     try {
       final pdf = pw.Document();
-      final startDate = bookingViewModel.filterStartDate ?? DateTime.now();
-      final endDate = bookingViewModel.filterEndDate ?? DateTime.now();
 
       pdf.addPage(
         pw.MultiPage(
@@ -132,7 +148,7 @@ class PdfService {
                 ),
               ],
             ),
-            pw.SizedBox( height: 20),
+            pw.SizedBox(height: 20),
             pw.Text('Bookings:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
             pw.SizedBox(height: 4),
             pw.Table(
@@ -149,47 +165,19 @@ class PdfService {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Date',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Date', style: _headerTextStyle()),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Address',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Address', style: _headerTextStyle()),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Name',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Name', style: _headerTextStyle()),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Day/Night',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Day/Night', style: _headerTextStyle()),
                     ),
                   ],
                 ),
@@ -199,19 +187,19 @@ class PdfService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(_dateFormat.format(booking.date), style: const pw.TextStyle(fontSize: 10)),
+                        child: pw.Text(_dateFormat.format(booking.date), style: _cellTextStyle()),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.location, style: const pw.TextStyle(fontSize: 10)),
+                        child: pw.Text(booking.location, style: _cellTextStyle()),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.owner, style: const pw.TextStyle(fontSize: 10)),
+                        child: pw.Text(booking.owner, style: _cellTextStyle()),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.dayNight ? 'Yes' : 'No', style: const pw.TextStyle(fontSize: 10)),
+                        child: pw.Text(booking.dayNight ? 'Yes' : 'No', style: _cellTextStyle()),
                       ),
                     ],
                   ),
@@ -219,33 +207,26 @@ class PdfService {
               ],
             ),
             pw.SizedBox(height: 8),
-            pw.Text(
-              'Total Bookings: ${bookings.length}',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-            ),
+            pw.Text('Total Bookings: ${bookings.length}', style: _footerTextStyle()),
             pw.SizedBox(height: 4),
-            pw.Text(
-              'Total Day&Night Bookings: ${bookings.where((booking) => booking.dayNight).length}',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-            ),
+            pw.Text('Total Day&Night Bookings: ${bookings.where((b) => b.dayNight).length}', style: _footerTextStyle()),
           ],
         ),
       );
 
       final pdfBytes = await pdf.save();
-      debugPrint('Attempting to share bookings PDF...');
 
       try {
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename: 'bookings_report.pdf',
-          subject: 'Bookings Report for ${_dateFormat.format(startDate)} to ${_dateFormat.format(endDate)}',
+          filename: '${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf',
+          subject: 'Bookings Report for ${buildDateRangeLabel(startDate, endDate)}',
         );
       } catch (shareError) {
         debugPrint('Share failed: $shareError');
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
           final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/bookings_report.pdf');
+          final file = File('${dir.path}/${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf');
           await file.writeAsBytes(pdfBytes);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('PDF saved locally at ${file.path}')),
@@ -261,13 +242,16 @@ class PdfService {
 
   static Future<void> generateExpensesPdf(BuildContext context) async {
     final expenses = await _fetchExpenses(context);
-
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No expenses available to generate PDF')),
       );
       return;
     }
+
+    final bookingViewModel = context.read<BookingViewModel>();
+    final startDate = bookingViewModel.filterStartDate ?? DateTime.now();
+    final endDate = bookingViewModel.filterEndDate ?? DateTime.now();
 
     try {
       final pdf = pw.Document();
@@ -284,17 +268,10 @@ class PdfService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Generated Date: ${_dateFormat.format(DateTime.now())}'),
-                  ],
-                ),
+                pw.Text('Generated Date: ${_dateFormat.format(DateTime.now())}'),
               ],
             ),
             pw.SizedBox(height: 20),
-            pw.Text('Expenses:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-            pw.SizedBox(height: 4),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey),
               columnWidths: {
@@ -307,25 +284,11 @@ class PdfService {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Date',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Date', style: _headerTextStyle()),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        'Price',
-                        style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          color: PdfColors.white,
-                        ),
-                      ),
+                      child: pw.Text('Price', style: _headerTextStyle()),
                     ),
                   ],
                 ),
@@ -338,11 +301,11 @@ class PdfService {
                       children: [
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(dateText, style: const pw.TextStyle(fontSize: 10)),
+                          child: pw.Text(dateText, style: _cellTextStyle()),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text('${expense.price} Rs', style: const pw.TextStyle(fontSize: 10)),
+                          child: pw.Text('${expense.price} Rs', style: _cellTextStyle()),
                         ),
                       ],
                     );
@@ -351,33 +314,26 @@ class PdfService {
               ],
             ),
             pw.SizedBox(height: 8),
-            pw.Text(
-              'Total Expenses: ${expenses.length}',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-            ),
+            pw.Text('Total Expenses: ${expenses.length}', style: _footerTextStyle()),
             pw.SizedBox(height: 4),
-            pw.Text(
-              'Total Amount: ${expenses.fold<double>(0, (sum, expense) => sum + expense.price)} Rs',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-            ),
+            pw.Text('Total Amount: ${expenses.fold<double>(0, (sum, e) => sum + e.price)} Rs', style: _footerTextStyle()),
           ],
         ),
       );
 
       final pdfBytes = await pdf.save();
-      debugPrint('Attempting to share expenses PDF...');
 
       try {
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename: 'expenses_report.pdf',
-          subject: 'Expenses Report generated on ${_dateFormat.format(DateTime.now())}',
+          filename: '${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf',
+          subject: 'Expenses Report for ${buildDateRangeLabel(startDate, endDate)}',
         );
       } catch (shareError) {
         debugPrint('Share failed: $shareError');
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
           final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/expenses_report.pdf');
+          final file = File('${dir.path}/${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf');
           await file.writeAsBytes(pdfBytes);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('PDF saved locally at ${file.path}')),
@@ -390,4 +346,17 @@ class PdfService {
       _handleError(context, e.toString(), 'Expenses');
     }
   }
+
+  static pw.TextStyle _headerTextStyle() => pw.TextStyle(
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 12,
+        color: PdfColors.white,
+      );
+
+  static pw.TextStyle _cellTextStyle() => const pw.TextStyle(fontSize: 10);
+
+  static pw.TextStyle _footerTextStyle() => pw.TextStyle(
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 12,
+      );
 }
