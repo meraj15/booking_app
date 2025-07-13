@@ -26,6 +26,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
   final TextEditingController _endDateController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+String? _selectedOwnerFilter = 'Ramzaan';
+
 
   static final _firstDate = DateTime(2025);
   static final _lastDate = DateTime(2026);
@@ -103,34 +105,37 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
   }
 
-  Future<void> _handleGeneratePdf(BuildContext context) async {
-    final viewModel = context.read<BookingViewModel>();
-    if (!viewModel.isSharedPdf) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('PDF sharing is disabled')));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await PdfService.generateBookingsPdf(context).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw Exception('PDF generation timed out'),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to generate PDF: ${e.toString().split(':').last.trim()}',
-          ),
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+Future<void> _handleGeneratePdf(BuildContext context) async {
+  final viewModel = context.read<BookingViewModel>();
+  if (!viewModel.isSharedPdf) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('PDF sharing is disabled')));
+    return;
   }
+
+  setState(() => _isLoading = true);
+
+  try {
+    await PdfService.generateBookingsPdf(
+      context,
+      selectedOrganizer: _selectedOwnerFilter,
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception('PDF generation timed out'),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Failed to generate PDF: ${e.toString().split(':').last.trim()}',
+        ),
+      ),
+    );
+  } finally {
+    setState(() => _isLoading = false);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -179,18 +184,54 @@ class _BookingsScreenState extends State<BookingsScreen> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: StreamBuilder<List<Booking>>(
-                  stream: viewModel.bookings,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      debugPrint('Bookings stream error: ${snapshot.error}');
-                    }
-                    final bookings = snapshot.data ?? [];
-                    return Text(
-                      "Total Booking: ${bookings.length}",
-                      style: const TextStyle(fontSize: 16),
-                    );
-                  },
-                ),
+  stream: viewModel.bookings,
+  builder: (context, snapshot) {
+    if (snapshot.hasError) {
+      debugPrint('Bookings stream error: ${snapshot.error}');
+    }
+    final allBookings = snapshot.data ?? [];
+final filteredBookings = _selectedOwnerFilter == null
+    ? allBookings
+    : allBookings.where((b) =>
+        b.organizer != null &&
+        b.organizer!.trim().toLowerCase() ==
+            _selectedOwnerFilter!.trim().toLowerCase()
+      ).toList();
+
+return Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    Text(
+      "Total Booking: ${filteredBookings.length}",
+      style: const TextStyle(fontSize: 16),
+    ),
+        DropdownButton<String>(
+          value: _selectedOwnerFilter,
+          hint: const Text("Select Owner"),
+          items: [
+            const DropdownMenuItem<String>(
+              value: null,
+              child: Text("All"),
+            ),
+            ...viewModel.organizers
+                .where((o) => o != "Other")
+                .map((organizer) => DropdownMenuItem<String>(
+                      value: organizer,
+                      child: Text(organizer),
+                    ))
+                .toList(),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _selectedOwnerFilter = value;
+            });
+          },
+        ),
+      ],
+    );
+  },
+),
+
               ),
               Expanded(
                 child: StreamBuilder<List<Booking>>(
@@ -207,7 +248,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       debugPrint('Bookings stream error: ${snapshot.error}');
                       return Center(child: Text('Error: ${snapshot.error}'));
                     }
-                    final bookings = snapshot.data ?? [];
+       final allBookings = snapshot.data ?? [];
+final bookings = _selectedOwnerFilter == null
+    ? allBookings
+    : allBookings.where((b) => b.organizer?.trim().toLowerCase() == _selectedOwnerFilter?.trim().toLowerCase()
+).toList();
+
                     return bookings.isEmpty
                         ? const Center(
                           child: Text(ConstantsString.bookingNotFound),

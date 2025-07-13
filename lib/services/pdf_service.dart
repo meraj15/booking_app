@@ -21,35 +21,34 @@ class PdfService {
   static final _firestoreService = FirestoreService();
 
   static void _handleError(BuildContext context, String error, String type) {
-    final errorMessage = error.contains('User not authenticated')
-        ? 'Please sign in to generate PDF'
-        : error.contains('timeout')
+    final errorMessage =
+        error.contains('User not authenticated')
+            ? 'Please sign in to generate PDF'
+            : error.contains('timeout')
             ? 'Request timed out. Check your connection.'
             : error.contains('sharing not supported')
-                ? 'Sharing unavailable on this device'
-                : error.split(':').last.trim();
+            ? 'Sharing unavailable on this device'
+            : error.split(':').last.trim();
     debugPrint('Error in $type PDF: $error');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type PDF failed: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$type PDF failed: $errorMessage')));
   }
 
- static String buildDateRangeLabel(DateTime start, DateTime end) {
-  final startMonth = DateFormat('MMMM').format(start);
-  final endMonth = DateFormat('MMMM').format(end);
+  static String buildDateRangeLabel(DateTime start, DateTime end) {
+    final startMonth = DateFormat('MMMM').format(start);
+    final endMonth = DateFormat('MMMM').format(end);
 
-  if (start.year == end.year) {
-    if (start.month == end.month) {
-      return '$startMonth ${start.year}';
+    if (start.year == end.year) {
+      if (start.month == end.month) {
+        return '$startMonth ${start.year}';
+      } else {
+        return '$startMonth - $endMonth ${start.year}';
+      }
     } else {
-      return '$startMonth - $endMonth ${start.year}';
+      return '$startMonth ${start.year} - $endMonth ${end.year}';
     }
-  } else {
-    return '$startMonth ${start.year} - $endMonth ${end.year}';
   }
-}
-
-
 
   static Future<List<Booking>> _fetchBookings(BuildContext context) async {
     final bookingViewModel = context.read<BookingViewModel>();
@@ -61,7 +60,9 @@ class PdfService {
     }
 
     try {
-      debugPrint('Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
+      debugPrint(
+        'Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}',
+      );
       final bookings = await bookingViewModel.bookings.first.timeout(
         const Duration(seconds: 5),
         onTimeout: () async {
@@ -73,7 +74,8 @@ class PdfService {
           );
         },
       );
-      return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
+      return bookings.isEmpty ? [] : bookings
+        ..sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       debugPrint('Booking fetch error: $e');
       final bookings = await _firestoreService.fetchBookingsOnce(
@@ -81,44 +83,60 @@ class PdfService {
         startDate: startDate,
         endDate: endDate,
       );
-      return bookings.isEmpty ? [] : bookings..sort((a, b) => a.date.compareTo(b.date));
+      return bookings.isEmpty ? [] : bookings
+        ..sort((a, b) => a.date.compareTo(b.date));
     }
   }
 
- static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
-  final expensesViewModel = context.read<ExpensesViewModel>();
-  final userEmail = expensesViewModel.userEmail; // or use expensesViewModel.user?.email if you store user there
-  final startDate = expensesViewModel.filterStartDate;
-  final endDate = expensesViewModel.filterEndDate;
+  static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
+    final expensesViewModel = context.read<ExpensesViewModel>();
+    final userEmail =
+        expensesViewModel
+            .userEmail; // or use expensesViewModel.user?.email if you store user there
+    final startDate = expensesViewModel.filterStartDate;
+    final endDate = expensesViewModel.filterEndDate;
 
-  if (userEmail == null) {
-    throw Exception('User not authenticated');
+    if (userEmail == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      debugPrint('Fetching expenses for PDF directly from Firestore...');
+      final expenses =
+          await FirestoreService()
+              .getExpenses(
+                userEmail: userEmail,
+                startDate: startDate,
+                endDate: endDate,
+              )
+              .first;
+
+      debugPrint('Fetched ${expenses.length} expenses from Firestore');
+      return expenses;
+    } catch (e) {
+      debugPrint('Expenses fetch error: $e');
+      return [];
+    }
   }
 
-  try {
-    debugPrint('Fetching expenses for PDF directly from Firestore...');
-    final expenses = await FirestoreService().getExpenses(
-      userEmail: userEmail,
-      startDate: startDate,
-      endDate: endDate,
-    ).first;
-
-    debugPrint('Fetched ${expenses.length} expenses from Firestore');
-    return expenses;
-  } catch (e) {
-    debugPrint('Expenses fetch error: $e');
-    return [];
-  }
-}
-
-
-  static Future<void> generateBookingsPdf(BuildContext context) async {
+  static Future<void> generateBookingsPdf(
+    BuildContext context, {
+    String? selectedOrganizer,
+  }) async {
     final bookingViewModel = context.read<BookingViewModel>();
-    final bookings = await _fetchBookings(context);
+    final allBookings = await _fetchBookings(context);
+    final bookings =
+        selectedOrganizer == null
+            ? allBookings
+            : allBookings
+                .where((b) => b.organizer == selectedOrganizer)
+                .toList();
 
     if (bookings.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No bookings available in the selected date range')),
+        const SnackBar(
+          content: Text('No bookings available in the selected date range'),
+        ),
       );
       return;
     }
@@ -132,88 +150,130 @@ class PdfService {
       pdf.addPage(
         pw.MultiPage(
           pageTheme: const pw.PageTheme(margin: pw.EdgeInsets.all(32)),
-          build: (context) => [
-            pw.Header(
-              level: 0,
-              child: pw.Text('Bookings Report', style: const pw.TextStyle(fontSize: 24)),
-            ),
-            pw.SizedBox(height: 16),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.end,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Date Range: ${_dateFormat.format(startDate)} - ${_dateFormat.format(endDate)}'),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Generated Date: ${_dateFormat.format(DateTime.now())}'),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-            pw.Text('Bookings:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-            pw.SizedBox(height: 4),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(80),
-                1: const pw.FlexColumnWidth(),
-                2: const pw.FlexColumnWidth(0.5),
-                3: const pw.FixedColumnWidth(90),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.black),
-                  children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Date', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Address', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Name', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Day/Night', style: _headerTextStyle()),
-                    ),
-                  ],
-                ),
-                ...bookings.map(
-                  (booking) => pw.TableRow(
-                    decoration: booking.dayNight ? const pw.BoxDecoration(color: PdfColors.blue50) : null,
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(_dateFormat.format(booking.date), style: _cellTextStyle()),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.location, style: _cellTextStyle()),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.owner, style: _cellTextStyle()),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(booking.dayNight ? 'Yes' : 'No', style: _cellTextStyle()),
-                      ),
-                    ],
+          build:
+              (context) => [
+                pw.Header(
+                  level: 0,
+                  child: pw.Text(
+                    'Bookings Report',
+                    style: const pw.TextStyle(fontSize: 24),
                   ),
                 ),
+                pw.SizedBox(height: 16),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Date Range: ${_dateFormat.format(startDate)} - ${_dateFormat.format(endDate)}',
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Generated Date: ${_dateFormat.format(DateTime.now())}',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text(
+                  'Bookings:',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  columnWidths: {
+                    0: const pw.FixedColumnWidth(80),
+                    1: const pw.FlexColumnWidth(),
+                    2: const pw.FlexColumnWidth(0.5),
+                    3: const pw.FixedColumnWidth(90),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.black,
+                      ),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Date', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Address', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Name', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            'Day/Night',
+                            style: _headerTextStyle(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ...bookings.map(
+                      (booking) => pw.TableRow(
+                        decoration:
+                            booking.dayNight
+                                ? const pw.BoxDecoration(
+                                  color: PdfColors.blue50,
+                                )
+                                : null,
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              _dateFormat.format(booking.date),
+                              style: _cellTextStyle(),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              booking.location,
+                              style: _cellTextStyle(),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              booking.owner,
+                              style: _cellTextStyle(),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              booking.dayNight ? 'Yes' : 'No',
+                              style: _cellTextStyle(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Total Bookings: ${bookings.length}',
+                  style: _footerTextStyle(),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Total Day&Night Bookings: ${bookings.where((b) => b.dayNight).length}',
+                  style: _footerTextStyle(),
+                ),
               ],
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text('Total Bookings: ${bookings.length}', style: _footerTextStyle()),
-            pw.SizedBox(height: 4),
-            pw.Text('Total Day&Night Bookings: ${bookings.where((b) => b.dayNight).length}', style: _footerTextStyle()),
-          ],
         ),
       );
 
@@ -222,14 +282,18 @@ class PdfService {
       try {
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename: '${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf',
-          subject: 'Bookings Report for ${buildDateRangeLabel(startDate, endDate)}',
+          filename:
+              '${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf',
+          subject:
+              'Bookings Report for ${buildDateRangeLabel(startDate, endDate)}',
         );
       } catch (shareError) {
         debugPrint('Share failed: $shareError');
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
           final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf');
+          final file = File(
+            '${dir.path}/${buildDateRangeLabel(startDate, endDate)} Bookings Report.pdf',
+          );
           await file.writeAsBytes(pdfBytes);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('PDF saved locally at ${file.path}')),
@@ -252,10 +316,9 @@ class PdfService {
       return;
     }
 
-   final expensesViewModel = context.read<ExpensesViewModel>();
-   final startDate = expensesViewModel.filterStartDate ?? DateTime.now();
-   final endDate = expensesViewModel.filterEndDate ?? DateTime.now();
-
+    final expensesViewModel = context.read<ExpensesViewModel>();
+    final startDate = expensesViewModel.filterStartDate ?? DateTime.now();
+    final endDate = expensesViewModel.filterEndDate ?? DateTime.now();
 
     try {
       final pdf = pw.Document();
@@ -263,65 +326,81 @@ class PdfService {
       pdf.addPage(
         pw.MultiPage(
           pageTheme: const pw.PageTheme(margin: pw.EdgeInsets.all(32)),
-          build: (context) => [
-            pw.Header(
-              level: 0,
-              child: pw.Text('Expenses Report', style: const pw.TextStyle(fontSize: 24)),
-            ),
-            pw.SizedBox(height: 16),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.end,
-              children: [
-                pw.Text('Generated Date: ${_dateFormat.format(DateTime.now())}'),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(),
-                1: const pw.FixedColumnWidth(80),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.black),
+          build:
+              (context) => [
+                pw.Header(
+                  level: 0,
+                  child: pw.Text(
+                    'Expenses Report',
+                    style: const pw.TextStyle(fontSize: 24),
+                  ),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
                   children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Date', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Price', style: _headerTextStyle()),
+                    pw.Text(
+                      'Generated Date: ${_dateFormat.format(DateTime.now())}',
                     ),
                   ],
                 ),
-                ...expenses.map(
-                  (expense) {
-                    final dateText = expense.toDate != null
-                        ? '${_dateFormat.format(expense.fromDate)} to ${_dateFormat.format(expense.toDate!)}'
-                        : _dateFormat.format(expense.fromDate);
-                    return pw.TableRow(
+                pw.SizedBox(height: 20),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(),
+                    1: const pw.FixedColumnWidth(80),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.black,
+                      ),
                       children: [
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(dateText, style: _cellTextStyle()),
+                          child: pw.Text('Date', style: _headerTextStyle()),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text('${expense.price} Rs', style: _cellTextStyle()),
+                          child: pw.Text('Price', style: _headerTextStyle()),
                         ),
                       ],
-                    );
-                  },
+                    ),
+                    ...expenses.map((expense) {
+                      final dateText =
+                          expense.toDate != null
+                              ? '${_dateFormat.format(expense.fromDate)} to ${_dateFormat.format(expense.toDate!)}'
+                              : _dateFormat.format(expense.fromDate);
+                      return pw.TableRow(
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(dateText, style: _cellTextStyle()),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              '${expense.price} Rs',
+                              style: _cellTextStyle(),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Total Expenses: ${expenses.length}',
+                  style: _footerTextStyle(),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Total Amount: ${expenses.fold<double>(0, (sum, e) => sum + e.price)} Rs',
+                  style: _footerTextStyle(),
                 ),
               ],
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text('Total Expenses: ${expenses.length}', style: _footerTextStyle()),
-            pw.SizedBox(height: 4),
-            pw.Text('Total Amount: ${expenses.fold<double>(0, (sum, e) => sum + e.price)} Rs', style: _footerTextStyle()),
-          ],
         ),
       );
 
@@ -330,14 +409,18 @@ class PdfService {
       try {
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename: '${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf',
-          subject: 'Expenses Report for ${buildDateRangeLabel(startDate, endDate)}',
+          filename:
+              '${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf',
+          subject:
+              'Expenses Report for ${buildDateRangeLabel(startDate, endDate)}',
         );
       } catch (shareError) {
         debugPrint('Share failed: $shareError');
         if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
           final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf');
+          final file = File(
+            '${dir.path}/${buildDateRangeLabel(startDate, endDate)} Expenses Report.pdf',
+          );
           await file.writeAsBytes(pdfBytes);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('PDF saved locally at ${file.path}')),
@@ -352,15 +435,13 @@ class PdfService {
   }
 
   static pw.TextStyle _headerTextStyle() => pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        fontSize: 12,
-        color: PdfColors.white,
-      );
+    fontWeight: pw.FontWeight.bold,
+    fontSize: 12,
+    color: PdfColors.white,
+  );
 
   static pw.TextStyle _cellTextStyle() => const pw.TextStyle(fontSize: 10);
 
-  static pw.TextStyle _footerTextStyle() => pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        fontSize: 12,
-      );
+  static pw.TextStyle _footerTextStyle() =>
+      pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12);
 }
