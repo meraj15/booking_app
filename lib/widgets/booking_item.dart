@@ -1,5 +1,6 @@
 import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
+import 'package:booking_app/widgets/expenses.dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -99,6 +100,11 @@ class BookingItem extends StatelessWidget {
                 builder:
                     (_) => BookingDialog(booking: booking, isDuplicate: true),
               );
+            } else if (value == 'add_expense') {
+              showDialog(
+                context: context,
+                builder: (context) =>  ExpensesDialog(),
+              );
             }
           },
           itemBuilder:
@@ -133,6 +139,16 @@ class BookingItem extends StatelessWidget {
                       ),
                       SizedBox(width: 8),
                       Text('Duplicate'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'add_expense',
+                  child: Row(
+                    children: [
+                      Icon(Icons.attach_money, color: AppColor.primary),
+                      SizedBox(width: 8),
+                      Text('Add Expense'),
                     ],
                   ),
                 ),

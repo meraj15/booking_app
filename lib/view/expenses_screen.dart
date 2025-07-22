@@ -90,7 +90,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   Future<void> _showExpensesDialog(BuildContext context) async {
     await showDialog(
       context: context,
-      builder: (context) => const ExpensesDialog(),
+      builder: (context) =>  ExpensesDialog(),
     );
   }
 

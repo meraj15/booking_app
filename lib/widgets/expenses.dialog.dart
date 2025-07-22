@@ -3,7 +3,7 @@ import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:booking_app/widgets/text_field.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For inputFormatters
+import 'package:flutter/services.dart'; 
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -14,6 +14,7 @@ class ExpensesDialog extends StatefulWidget {
   const ExpensesDialog({super.key, this.expense});
 
   @override
+  // ignore: library_private_types_in_public_api
   _ExpensesDialogState createState() => _ExpensesDialogState();
 }
 
@@ -45,7 +46,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
       text: _toDate != null ? _dateFormat.format(_toDate!) : '',
     );
     _priceController = TextEditingController(
-      text: widget.expense?.price.toInt().toString() ?? '', // Convert to int
+      text: widget.expense?.price.toInt().toString() ?? '', 
     );
     debugPrint(
       'ExpensesDialog initialized with fromDate: ${_fromDateController.text}, '
@@ -155,7 +156,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
       final viewModel = context.read<ExpensesViewModel>();
       final newExpense = Expenses(
         id: widget.expense?.id ?? '',
-        price: price.toDouble(), // Store as int
+        price: price.toDouble(), 
         fromDate: _fromDate!,
         toDate: _toDate,
       );
