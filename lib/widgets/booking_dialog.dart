@@ -1,6 +1,5 @@
 import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/constant/app_constant_string.dart';
-import 'package:booking_app/widgets/booking_type_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +31,7 @@ class _BookingDialogState extends State<BookingDialog> {
   late final TextEditingController _dateController;
   late final TextEditingController _customOrganizerController;
   DateTime? _selectedDate;
-  bool _isDayNight = false;
+  String _selectedBookingType = ConstantsString.defaultBookingType; 
   String? _selectedOrganizer;
 
   final SpeechToText _speech = SpeechToText();
@@ -53,7 +52,7 @@ class _BookingDialogState extends State<BookingDialog> {
       text: DateFormat(ConstantsString.dateFormat).format(_selectedDate!),
     );
     _customOrganizerController = TextEditingController();
-    _isDayNight = widget.booking?.dayNight ?? false;
+    _selectedBookingType = widget.booking?.bookingType ?? ConstantsString.defaultBookingType; // ✅
     _selectedOrganizer = widget.booking?.organizer != null &&
             context.read<BookingViewModel>().organizers.contains(widget.booking!.organizer)
         ? widget.booking!.organizer
@@ -168,7 +167,7 @@ class _BookingDialogState extends State<BookingDialog> {
         date: _selectedDate!,
         location: _locationController.text.trim().toUpperCase(),
         owner: _ownerController.text.trim().toUpperCase(),
-        dayNight: _isDayNight,
+        bookingType: _selectedBookingType,
         organizer: finalOrganizer,
       );
 
@@ -272,9 +271,21 @@ class _BookingDialogState extends State<BookingDialog> {
                 'Booking Type',
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              BookingTypeSelector(
-                isDayNight: _isDayNight,
-                onChanged: (value) => setState(() => _isDayNight = value),
+              DropdownButtonFormField<String>(
+                value: _selectedBookingType,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: ConstantsString.allowedBookingTypes.map((type) {
+                  return DropdownMenuItem(value: type, child: Text(type));
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedBookingType = value);
+                  }
+                },
+                validator: (value) => value == null ? 'Please select booking type' : null,
               ),
               const SizedBox(height: 18.0),
               Text(

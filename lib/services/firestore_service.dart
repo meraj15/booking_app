@@ -4,6 +4,7 @@ import '../models/expenses.dart';
 import '../models/booking.dart';
 
 class FirestoreService {
+  // -------------------- EXPENSES --------------------
   Future<void> addExpense(String userEmail, Expenses expense) async {
     try {
       await FirebaseFirestore.instance
@@ -41,7 +42,8 @@ class FirestoreService {
               try {
                 return Expenses.fromMap(doc.id, doc.data());
               } catch (e) {
-                debugPrint('Error parsing expense ${doc.id} for $userEmail: $e');
+                debugPrint(
+                    'Error parsing expense ${doc.id} for $userEmail: $e');
                 return null;
               }
             })
@@ -50,34 +52,36 @@ class FirestoreService {
             .toList());
   }
 
- Future<void> updateExpense(String userEmail, String id, Expenses expense) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userEmail)
-        .collection('expenses')
-        .doc(id)
-        .update(expense.toMap());
-  } catch (e) {
-    debugPrint('Error updating expense for $userEmail: $e');
-    rethrow;
+  Future<void> updateExpense(
+      String userEmail, String id, Expenses expense) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('expenses')
+          .doc(id)
+          .update(expense.toMap());
+    } catch (e) {
+      debugPrint('Error updating expense for $userEmail: $e');
+      rethrow;
+    }
   }
-}
 
-Future<void> deleteExpense(String userEmail, String id) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userEmail)
-        .collection('expenses')
-        .doc(id)
-        .delete();
-  } catch (e) {
-    debugPrint('Error deleting expense for $userEmail: $e');
-    rethrow;
+  Future<void> deleteExpense(String userEmail, String id) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('expenses')
+          .doc(id)
+          .delete();
+    } catch (e) {
+      debugPrint('Error deleting expense for $userEmail: $e');
+      rethrow;
+    }
   }
-}
 
+  // -------------------- BOOKINGS --------------------
   Future<void> addBooking(String userEmail, Booking booking) async {
     try {
       await FirebaseFirestore.instance
@@ -102,7 +106,8 @@ Future<void> deleteExpense(String userEmail, String id) async {
               try {
                 return Booking.fromMap(doc.id, doc.data());
               } catch (e) {
-                debugPrint('Error parsing booking ${doc.id} for $userEmail: $e');
+                debugPrint(
+                    'Error parsing booking ${doc.id} for $userEmail: $e');
                 return null;
               }
             })
@@ -111,44 +116,54 @@ Future<void> deleteExpense(String userEmail, String id) async {
             .toList());
   }
 
-Future<List<Booking>> fetchBookingsOnce(String userEmail, {DateTime? startDate, DateTime? endDate}) async {
-  try {
-    var query = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userEmail)
-        .collection('bookings')
-        .orderBy('date', descending: false);
+  Future<List<Booking>> fetchBookingsOnce(
+    String userEmail, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      var query = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('bookings')
+          .orderBy('date', descending: false);
 
-    // Apply date range filters if provided
-  if (startDate != null) {
-  final adjustedStartDate = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
-  query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(adjustedStartDate));
-}
-if (endDate != null) {
-  final adjustedEndDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
-  query = query.where('date', isLessThanOrEqualTo: Timestamp.fromDate(adjustedEndDate));
-}
+      // Apply date range filters if provided
+      if (startDate != null) {
+        final adjustedStartDate =
+            DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+        query = query.where('date',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(adjustedStartDate));
+      }
+      if (endDate != null) {
+        final adjustedEndDate =
+            DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+        query = query.where('date',
+            isLessThanOrEqualTo: Timestamp.fromDate(adjustedEndDate));
+      }
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) {
-          try {
-            return Booking.fromMap(doc.id, doc.data());
-          } catch (e) {
-            debugPrint('Error parsing booking ${doc.id} for $userEmail: $e');
-            return null;
-          }
-        })
-        .where((booking) => booking != null)
-        .cast<Booking>()
-        .toList();
-  } catch (e) {
-    debugPrint('Error fetching bookings for $userEmail: $e');
-    rethrow;
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) {
+            try {
+              return Booking.fromMap(doc.id, doc.data());
+            } catch (e) {
+              debugPrint(
+                  'Error parsing booking ${doc.id} for $userEmail: $e');
+              return null;
+            }
+          })
+          .where((booking) => booking != null)
+          .cast<Booking>()
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching bookings for $userEmail: $e');
+      rethrow;
+    }
   }
-}
 
- Future<void> updateBooking(String userEmail, String bookingId, Booking booking) async {
+  Future<void> updateBooking(
+      String userEmail, String bookingId, Booking booking) async {
     try {
       await FirebaseFirestore.instance
           .collection('users')

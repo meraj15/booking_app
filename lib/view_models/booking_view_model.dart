@@ -8,7 +8,7 @@ class BookingViewModel extends ChangeNotifier {
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
   bool isSharedPdf = true;
-  bool isCheckingAuth = true; // ✅ Add this flag
+  bool isCheckingAuth = true; // ✅ Check auth state while initializing
   StreamSubscription? _bookingSubscription;
   final _bookingsStreamController = StreamController<List<Booking>>.broadcast();
   List<String> _organizers = ['Ramzaan', 'Irfan', 'Other'];
@@ -27,11 +27,10 @@ class BookingViewModel extends ChangeNotifier {
   BookingViewModel() {
     _filterStartDate = DateTime(2025, 1, 1);
     _filterEndDate = DateTime(2025, 12, 31);
-
-    // Start checking sign-in state
     _checkInitialSignIn();
   }
 
+  /// ✅ Check if user was already signed in
   Future<void> _checkInitialSignIn() async {
     try {
       final isSignedIn = await googleSignIn.isSignedIn();
@@ -45,11 +44,12 @@ class BookingViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error restoring sign-in: $e');
     } finally {
-      isCheckingAuth = false; // ✅ Mark as done
+      isCheckingAuth = false;
       notifyListeners();
     }
   }
 
+  /// ✅ Google login
   Future<void> googleLogin() async {
     try {
       _user = await googleSignIn.signIn();
@@ -60,10 +60,11 @@ class BookingViewModel extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
-      throw e;
+      rethrow;
     }
   }
 
+  /// ✅ Sign out
   Future<void> signOut() async {
     try {
       await googleSignIn.signOut();
@@ -72,10 +73,11 @@ class BookingViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Sign out error: $e');
-      throw e;
+      rethrow;
     }
   }
 
+  /// ✅ Fetch unique organizers dynamically from Firestore
   void _fetchOrganizers() async {
     if (_user?.email == null) return;
     try {
@@ -93,6 +95,7 @@ class BookingViewModel extends ChangeNotifier {
     }
   }
 
+  /// ✅ Subscribe to Firestore bookings
   void _fetchBookings() {
     if (_user?.email == null) {
       _bookingsStreamController.add([]);
@@ -105,7 +108,7 @@ class BookingViewModel extends ChangeNotifier {
             .where((b) =>
                 (b.date.isAtSameMomentAs(_filterStartDate ?? DateTime(2000)) ||
                     b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
-                (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(Duration(days: 1)))))
+                (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(const Duration(days: 1)))))
             .toList()
               ..sort((a, b) => a.date.compareTo(b.date)))
         .listen(_bookingsStreamController.add, onError: (e) {
@@ -114,6 +117,7 @@ class BookingViewModel extends ChangeNotifier {
         });
   }
 
+  /// ✅ Add booking
   Future<void> addBooking(Booking booking) async {
     if (_user?.email == null) throw Exception('User not authenticated');
     try {
@@ -122,7 +126,7 @@ class BookingViewModel extends ChangeNotifier {
         date: booking.date,
         location: booking.location,
         owner: booking.owner,
-        dayNight: booking.dayNight,
+        bookingType: booking.bookingType,
         organizer: booking.organizer,
       );
       await _firestoreService.addBooking(_user!.email, userBooking);
@@ -130,10 +134,11 @@ class BookingViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error adding booking: $e');
-      throw e;
+      rethrow;
     }
   }
 
+  /// ✅ Update booking
   Future<void> updateBooking(String bookingId, Booking booking) async {
     if (_user?.email == null) throw Exception('User not authenticated');
     try {
@@ -142,10 +147,11 @@ class BookingViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error updating booking: $e');
-      throw e;
+      rethrow;
     }
   }
 
+  /// ✅ Delete booking
   Future<void> deleteBooking(String bookingId) async {
     if (_user?.email == null) throw Exception('User not authenticated');
     try {
@@ -154,10 +160,11 @@ class BookingViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error deleting booking: $e');
-      throw e;
+      rethrow;
     }
   }
 
+  /// ✅ Apply date/month filter
   void filterBookings({DateTime? startDate, DateTime? endDate, DateTime? month}) {
     if (month != null) {
       _filterStartDate = DateTime(month.year, month.month, 1);

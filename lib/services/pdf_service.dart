@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 
 class PdfService {
   static final _dateFormat = DateFormat(ConstantsString.dateFormat);
-  // static final _monthFormat = DateFormat('MMMM yyyy'); // e.g., June 2024
   static final _firestoreService = FirestoreService();
 
   static void _handleError(BuildContext context, String error, String type) {
@@ -90,9 +89,7 @@ class PdfService {
 
   static Future<List<Expenses>> _fetchExpenses(BuildContext context) async {
     final expensesViewModel = context.read<ExpensesViewModel>();
-    final userEmail =
-        expensesViewModel
-            .userEmail; // or use expensesViewModel.user?.email if you store user there
+    final userEmail = expensesViewModel.userEmail;
     final startDate = expensesViewModel.filterStartDate;
     final endDate = expensesViewModel.filterEndDate;
 
@@ -192,7 +189,7 @@ class PdfService {
                     0: const pw.FixedColumnWidth(80),
                     1: const pw.FlexColumnWidth(),
                     2: const pw.FlexColumnWidth(0.5),
-                    3: const pw.FixedColumnWidth(90),
+                    3: const pw.FixedColumnWidth(110),
                   },
                   children: [
                     pw.TableRow(
@@ -214,19 +211,20 @@ class PdfService {
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(
-                            'Day/Night',
-                            style: _headerTextStyle(),
-                          ),
+                          child: pw.Text('Type', style: _headerTextStyle()),
                         ),
                       ],
                     ),
                     ...bookings.map(
                       (booking) => pw.TableRow(
                         decoration:
-                            booking.dayNight
+                            booking.bookingType == "Day&Night"
                                 ? const pw.BoxDecoration(
                                   color: PdfColors.blue50,
+                                )
+                                : booking.bookingType == "Day+HalfNight"
+                                ? const pw.BoxDecoration(
+                                  color: PdfColors.orange50,
                                 )
                                 : null,
                         children: [
@@ -254,7 +252,8 @@ class PdfService {
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
                             child: pw.Text(
-                              booking.dayNight ? 'Yes' : 'No',
+                              booking
+                                  .bookingType, 
                               style: _cellTextStyle(),
                             ),
                           ),
@@ -265,12 +264,17 @@ class PdfService {
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
-                  'Total Bookings: ${bookings.length}',
+                  'Total Day Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[0]).length}',
                   style: _footerTextStyle(),
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'Total Day&Night Bookings: ${bookings.where((b) => b.dayNight).length}',
+                  'Total Day&Night Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[1]).length}',
+                  style: _footerTextStyle(),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Total Day+HalfNight Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[2]).length}',
                   style: _footerTextStyle(),
                 ),
               ],
