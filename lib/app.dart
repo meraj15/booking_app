@@ -30,7 +30,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => BookingViewModel()),
+        ChangeNotifierProvider(create: (context) {
+    final vm = BookingViewModel();
+    vm.init(context);
+    return vm;
+  },),
         ChangeNotifierProvider(create: (_) => ExpensesViewModel()),
       ],
       child: MaterialApp(

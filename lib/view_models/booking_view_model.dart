@@ -1,8 +1,12 @@
 import 'package:booking_app/models/booking.dart';
 import 'package:booking_app/services/firestore_service.dart';
+import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:async';
+
+import 'package:provider/provider.dart';
 
 class BookingViewModel extends ChangeNotifier {
   DateTime? _filterStartDate;
@@ -27,33 +31,44 @@ class BookingViewModel extends ChangeNotifier {
   BookingViewModel() {
     _filterStartDate = DateTime(2025, 1, 1);
     _filterEndDate = DateTime(2025, 12, 31);
-    _checkInitialSignIn();
+  }
+
+  Future<void> init(BuildContext context) async {
+    await checkInitialSignIn(context);
   }
 
   /// ✅ Check if user was already signed in
-  Future<void> _checkInitialSignIn() async {
-    try {
-      final isSignedIn = await googleSignIn.isSignedIn();
-      if (isSignedIn) {
-        _user = await googleSignIn.signInSilently();
-        if (_user != null) {
-          _fetchBookings();
-          _fetchOrganizers();
-        }
+  Future<void> checkInitialSignIn(BuildContext context) async {
+  try {
+    final isSignedIn = await googleSignIn.isSignedIn();
+    if (isSignedIn) {
+      _user = await googleSignIn.signInSilently();
+      if (_user != null) {
+        // ✅ Sync with ExpensesViewModel so expenses know who is signed in
+        final expensesViewModel = 
+            Provider.of<ExpensesViewModel>(context, listen: false);
+        expensesViewModel.setUserEmail(_user!.email);
+
+        _fetchBookings();
+        _fetchOrganizers();
       }
-    } catch (e) {
-      debugPrint('Error restoring sign-in: $e');
-    } finally {
-      isCheckingAuth = false;
-      notifyListeners();
     }
+  } catch (e) {
+    debugPrint('Error restoring sign-in: $e');
+  } finally {
+    isCheckingAuth = false;
+    notifyListeners();
   }
+}
 
   /// ✅ Google login
-  Future<void> googleLogin() async {
+  Future<void> googleLogin(BuildContext context) async {
     try {
       _user = await googleSignIn.signIn();
       if (_user != null) {
+        final expensesViewModel = 
+          Provider.of<ExpensesViewModel>(context, listen: false);
+      expensesViewModel.setUserEmail(_user!.email);
         _fetchBookings();
         _fetchOrganizers();
         notifyListeners();

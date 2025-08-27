@@ -17,7 +17,7 @@ class AuthScreen extends StatelessWidget {
         child: ElevatedButton(
           onPressed: () async {
             try {
-              await viewModel.googleLogin();
+              await viewModel.googleLogin(context);
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => const BookingsScreen()),

@@ -37,6 +37,10 @@ String? _selectedOwnerFilter = 'Ramzaan';
     super.initState();
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
+    Future.microtask(() {
+      Provider.of<BookingViewModel>(context, listen: false)
+          .checkInitialSignIn(context);
+    });
     _startDateController.text = DateFormat(
       ConstantsString.dateFormat,
     ).format(startOfMonth);
