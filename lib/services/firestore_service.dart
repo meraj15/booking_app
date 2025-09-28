@@ -18,40 +18,39 @@ class FirestoreService {
     }
   }
 
-  Stream<List<Expenses>> getExpenses({
-    required String userEmail,
-    DateTime? startDate,
-    DateTime? endDate,
-  }) {
-    final now = DateTime.now();
-    final defaultStart = DateTime(now.year, now.month, 1);
-    final defaultEnd = DateTime(now.year, now.month + 1, 0);
+Stream<List<Expenses>> getExpenses({
+  required String userEmail,
+  DateTime? startDate,
+  DateTime? endDate,
+}) {
+  final now = DateTime.now();
+  final defaultStart = DateTime(now.year, now.month, 1);
+  final defaultEnd = DateTime(now.year, now.month + 1, 0);
 
-    final start = startDate ?? defaultStart;
-    final end = endDate ?? defaultEnd;
+  final start = startDate ?? defaultStart;
+  final end = endDate ?? defaultEnd;
 
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userEmail)
-        .collection('expenses')
-        .where('fromDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('fromDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) {
-              try {
-                return Expenses.fromMap(doc.id, doc.data());
-              } catch (e) {
-                debugPrint(
-                    'Error parsing expense ${doc.id} for $userEmail: $e');
-                return null;
-              }
-            })
-            .where((expense) => expense != null)
-            .cast<Expenses>()
-            .toList());
-  }
-
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(userEmail)
+      .collection('expenses')
+      .where('fromDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+      .where('fromDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+      .orderBy('fromDate', descending: true) // 🔥 latest expense first
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) {
+            try {
+              return Expenses.fromMap(doc.id, doc.data());
+            } catch (e) {
+              debugPrint('Error parsing expense ${doc.id} for $userEmail: $e');
+              return null;
+            }
+          })
+          .where((expense) => expense != null)
+          .cast<Expenses>()
+          .toList());
+}
   Future<void> updateExpense(
       String userEmail, String id, Expenses expense) async {
     try {
@@ -95,26 +94,28 @@ class FirestoreService {
     }
   }
 
-  Stream<List<Booking>> getBookings(String userEmail) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userEmail)
-        .collection('bookings')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) {
-              try {
-                return Booking.fromMap(doc.id, doc.data());
-              } catch (e) {
-                debugPrint(
-                    'Error parsing booking ${doc.id} for $userEmail: $e');
-                return null;
-              }
-            })
-            .where((booking) => booking != null)
-            .cast<Booking>()
-            .toList());
-  }
+Stream<List<Booking>> getBookings(String userEmail) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(userEmail)
+      .collection('bookings')
+      // no orderBy here to avoid Firestore filtering out docs with bad/missing fields
+      .snapshots()
+      .map((snapshot) {
+        final list = snapshot.docs.map((doc) {
+          try {
+            return Booking.fromMap(doc.id, doc.data());
+          } catch (e) {
+            debugPrint('Error parsing booking ${doc.id} for $userEmail: $e');
+            return null;
+          }
+        }).where((b) => b != null).cast<Booking>().toList();
+
+        // 🔽 latest first
+        list.sort((a, b) => b.date.compareTo(a.date));
+        return list;
+      });
+}
 
   Future<List<Booking>> fetchBookingsOnce(
     String userEmail, {

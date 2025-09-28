@@ -30,6 +30,7 @@ class _BookingDialogState extends State<BookingDialog> {
   late final TextEditingController _ownerController;
   late final TextEditingController _dateController;
   late final TextEditingController _customOrganizerController;
+  late final TextEditingController _descriptionController;
   DateTime? _selectedDate;
   String _selectedBookingType = ConstantsString.defaultBookingType; 
   String? _selectedOrganizer;
@@ -52,6 +53,7 @@ class _BookingDialogState extends State<BookingDialog> {
       text: DateFormat(ConstantsString.dateFormat).format(_selectedDate!),
     );
     _customOrganizerController = TextEditingController();
+    _descriptionController = TextEditingController(text: widget.booking?.description ?? "");
     _selectedBookingType = widget.booking?.bookingType ?? ConstantsString.defaultBookingType; // ✅
     _selectedOrganizer = widget.booking?.organizer != null &&
             context.read<BookingViewModel>().organizers.contains(widget.booking!.organizer)
@@ -129,6 +131,7 @@ class _BookingDialogState extends State<BookingDialog> {
     _ownerController.dispose();
     _dateController.dispose();
     _customOrganizerController.dispose();
+    _descriptionController.dispose();
     _speech.stop();
     super.dispose();
   }
@@ -169,6 +172,7 @@ class _BookingDialogState extends State<BookingDialog> {
         owner: _ownerController.text.trim().toUpperCase(),
         bookingType: _selectedBookingType,
         organizer: finalOrganizer,
+        description: _descriptionController.text.trim(),
       );
 
       try {
@@ -266,6 +270,14 @@ class _BookingDialogState extends State<BookingDialog> {
                 onMicPressed: () =>
                     _isListeningForOwner ? _stopListening() : _startListening(_ownerController, 'owner'),
               ),
+              const SizedBox(height: 18.0),
+              BookingTextField(
+  controller: _descriptionController,
+  labelText: 'Description (optional)',
+  hintText: 'Enter description...',
+  icon: Icons.notes,
+  validator: (value) => null, 
+),
               const SizedBox(height: 18.0),
               Text(
                 'Booking Type',

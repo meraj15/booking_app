@@ -7,8 +7,9 @@ class Booking {
   final DateTime date;
   final String location;
   final String owner;
-  final String bookingType; // Always one of: "Day", "Day&Night", "Day+HalfNight"
+  final String bookingType; 
   final String? organizer;
+  final String description;
 
   static const String defaultBookingType = "Day";
   static const allowedBookingTypes = ["Day", "Day&Night", "Day+HalfNight"];
@@ -20,6 +21,7 @@ class Booking {
     required this.owner,
     required this.bookingType,
     this.organizer,
+    this.description = '',
   }) : assert(allowedBookingTypes.contains(bookingType),
             'Invalid bookingType: $bookingType');
 
@@ -30,6 +32,7 @@ class Booking {
       'owner': owner,
       'bookingType': bookingType,
       'organizer': organizer,
+      'description': description,
     };
   }
 
@@ -53,6 +56,7 @@ class Booking {
       owner: data['owner'] ?? 'Unknown',
       bookingType: data['bookingType'] ?? ConstantsString.defaultBookingType,
       organizer: data['organizer'],
+      description: data['description'] ?? "",
     );
   }
 
@@ -64,6 +68,7 @@ class Booking {
       'owner': owner,
       'bookingType': bookingType,
       'organizer': organizer,
+      'description': description,
     };
   }
 
@@ -76,6 +81,7 @@ class Booking {
       owner: json['owner'] ?? 'Unknown',
       bookingType: json['bookingType'] ?? ConstantsString.defaultBookingType,
       organizer: json['organizer'],
+      description: json['description'] ?? "",
     );
   }
 }

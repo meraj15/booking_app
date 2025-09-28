@@ -36,18 +36,24 @@ class BookingItem extends StatelessWidget {
           ),
         ),
         title: Text(booking.owner),
-        subtitle: Row(
-          mainAxisSize: MainAxisSize.min,
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.location_on, size: 16),
-            Expanded(
-              child: Text(
-                booking.location,
-                // overflow: TextOverflow.ellipsis,
-                // maxLines: 1,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on, size: 16),
+                Expanded(child: Text(booking.location)),
+              ],
             ),
+            if (booking.description.isNotEmpty) ...[
+              const SizedBox(width: 4),
+              Text(
+                booking.description,
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ],
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -103,7 +109,7 @@ class BookingItem extends StatelessWidget {
             } else if (value == 'add_expense') {
               showDialog(
                 context: context,
-                builder: (context) =>  ExpensesDialog(),
+                builder: (context) => ExpensesDialog(),
               );
             }
           },

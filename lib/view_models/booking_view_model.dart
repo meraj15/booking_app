@@ -125,7 +125,7 @@ class BookingViewModel extends ChangeNotifier {
                     b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
                 (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(const Duration(days: 1)))))
             .toList()
-              ..sort((a, b) => a.date.compareTo(b.date)))
+              ..sort((a, b) => b.date.compareTo(a.date)))
         .listen(_bookingsStreamController.add, onError: (e) {
           debugPrint('Error fetching bookings: $e');
           _bookingsStreamController.addError(e);
