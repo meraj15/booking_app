@@ -1,6 +1,6 @@
 import 'package:booking_app/constant/app_color.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; 
+import 'package:flutter/services.dart';
 
 class BookingTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -14,8 +14,8 @@ class BookingTextField extends StatelessWidget {
   final VoidCallback? onMicPressed;
   final bool readOnly;
   final VoidCallback? onTap;
-  final TextInputType? keyboardType; 
-  final List<TextInputFormatter>? inputFormatters; 
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
 
   const BookingTextField({
     super.key,
@@ -42,27 +42,70 @@ class BookingTextField extends StatelessWidget {
       onTap: onTap,
       validator: validator,
       onChanged: onChanged,
-      keyboardType: keyboardType, 
-      inputFormatters: inputFormatters, 
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: labelText,
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: AppColor.grey,
+          fontWeight: FontWeight.w500,
+        ),
         hintText: hintText,
-        prefixIcon: Icon(icon),
-        suffixIcon: showMicButton
-            ? GestureDetector(
-                onTap: onMicPressed,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(
-                    Icons.mic,
-                    color: isListening ? AppColor.redColor : AppColor.primary,
-                    size: isListening ? 24 : 20,
+        hintStyle: TextStyle(
+          fontSize: 12,
+          color: AppColor.grey.withOpacity(0.6),
+        ),
+        prefixIcon: Icon(icon, size: 18, color: AppColor.primary),
+        suffixIcon:
+            showMicButton
+                ? GestureDetector(
+                  onTap: onMicPressed,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.all(8.0),
+                    child: Icon(
+                      Icons.mic,
+                      color: isListening ? AppColor.redColor : AppColor.primary,
+                      size: isListening ? 20 : 16,
+                    ),
                   ),
-                ),
-              )
-            : null,
-        border: const OutlineInputBorder(),
+                )
+                : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: AppColor.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: AppColor.grey.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColor.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColor.error, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColor.error, width: 1.5),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        errorStyle: const TextStyle(fontSize: 11, height: 0.8),
       ),
     );
   }

@@ -3,7 +3,7 @@ import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
 import 'package:booking_app/widgets/text_field.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; 
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -46,7 +46,7 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
       text: _toDate != null ? _dateFormat.format(_toDate!) : '',
     );
     _priceController = TextEditingController(
-      text: widget.expense?.price.toInt().toString() ?? '', 
+      text: widget.expense?.price.toInt().toString() ?? '',
     );
     debugPrint(
       'ExpensesDialog initialized with fromDate: ${_fromDateController.text}, '
@@ -115,7 +115,9 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
           debugPrint('Speech error: $error');
           setState(() => _isListening = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Speech recognition error: ${error.errorMsg}')),
+            SnackBar(
+              content: Text('Speech recognition error: ${error.errorMsg}'),
+            ),
           );
         },
       );
@@ -124,14 +126,21 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
         FocusScope.of(context).unfocus();
         _speech.listen(
           onResult: (result) {
-            final cleanedText = result.recognizedWords.replaceAll(RegExp(r'[^0-9]'), '');
+            final cleanedText = result.recognizedWords.replaceAll(
+              RegExp(r'[^0-9]'),
+              '',
+            );
             setState(() {
               _priceController.text = cleanedText.isNotEmpty ? cleanedText : '';
             });
-            debugPrint('Recognized: ${result.recognizedWords}, Cleaned: $cleanedText');
+            debugPrint(
+              'Recognized: ${result.recognizedWords}, Cleaned: $cleanedText',
+            );
             if (cleanedText.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please say a valid integer number')),
+                const SnackBar(
+                  content: Text('Please say a valid integer number'),
+                ),
               );
             }
           },
@@ -148,15 +157,13 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   }
 
   Future<void> _saveExpense(BuildContext context) async {
-   
-
     if (_formKey.currentState!.validate()) {
       final priceText = _priceController.text.trim();
       final price = int.tryParse(priceText) ?? 0;
       final viewModel = context.read<ExpensesViewModel>();
       final newExpense = Expenses(
         id: widget.expense?.id ?? '',
-        price: price.toDouble(), 
+        price: price.toDouble(),
         fromDate: _fromDate!,
         toDate: _toDate,
       );
@@ -164,146 +171,439 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
       try {
         if (widget.expense != null) {
           await viewModel.updateExpenses(newExpense.id, newExpense);
-          
         } else {
           await viewModel.addExpense(newExpense);
-         
         }
         Navigator.pop(context);
       } catch (e) {
         debugPrint('Error saving expense: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save expense: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save expense: $e')));
       }
     } else {
       debugPrint('Form validation failed');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields correctly')),
+        const SnackBar(
+          content: Text('Please fill all required fields correctly'),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-   
-
-    return AlertDialog(
-      title: Text(
-        widget.expense != null ? 'Update Expense' : 'Add Expense',
-        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-      ),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BookingTextField(
-                controller: _fromDateController,
-                labelText: 'From Date',
-                hintText: 'Select from date',
-                icon: Icons.calendar_today,
-                readOnly: true,
-                onTap: () => _selectFromDate(context),
-                validator: (value) => _fromDate == null ? 'Please select a from date' : null,
-              ),
-              const SizedBox(height: 18.0),
-              Row(
-                children: [
-                  Expanded(
-                    child: BookingTextField(
-                      controller: _toDateController,
-                      labelText: 'To Date (Optional)',
-                      hintText: 'Select to date',
-                      icon: Icons.calendar_today,
-                      readOnly: true,
-                      onTap: () => _selectToDate(context),
-                      validator: (value) {
-                        if (_toDate != null && _fromDate != null) {
-                          if (_toDate!.isBefore(_fromDate!)) {
-                            return 'To date must be after from date';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  if (_toDateController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clearToDate,
-                      tooltip: 'Clear To Date',
-                    ),
-                ],
-              ),
-              const SizedBox(height: 18.0),
-              Row(
-                children: [
-                  Expanded(
-                    child: BookingTextField(
-                      controller: _priceController,
-                      labelText: 'Price',
-                      hintText: 'Enter price in rupees (integer only)',
-                      icon: Icons.money,
-                      readOnly: _isListening,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly, 
-                      ],
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a price';
-                        }
-                        final cleanedValue = value.trim();
-                        if (int.tryParse(cleanedValue) == null || int.parse(cleanedValue) <= 0) {
-                          return 'Please enter a valid positive integer';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) => _priceController.text = value,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening ? AppColor.redColor : AppColor.primary,
-                    ),
-                    onPressed: () => _toggleListening(context),
-                    tooltip: _isListening ? 'Stop Listening' : 'Start Listening',
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            debugPrint('Cancel button pressed');
-            Navigator.pop(context);
-          },
-          child: Text(
-            'Cancel',
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: () => _saveExpense(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColor.primary,
-            foregroundColor: AppColor.secondary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag Handle
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 36,
+            height: 3,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(1.5),
             ),
           ),
-          child: Text(widget.expense == null ? 'Add' : 'Update'),
-        ),
-      ],
+          // Header with gradient
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: AppColor.accentGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColor.accent.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.expense != null ? 'Update Expense' : 'New Expense',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                  tooltip: 'Close',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Flexible(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date Section
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColor.info.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColor.info.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: AppColor.info,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Date Range',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColor.greyDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          BookingTextField(
+                            controller: _fromDateController,
+                            labelText: 'From Date',
+                            hintText: 'Select from date',
+                            icon: Icons.event,
+                            readOnly: true,
+                            onTap: () => _selectFromDate(context),
+                            validator:
+                                (value) =>
+                                    _fromDate == null
+                                        ? 'Please select a from date'
+                                        : null,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: BookingTextField(
+                                  controller: _toDateController,
+                                  labelText: 'To Date (Optional)',
+                                  hintText: 'Select to date',
+                                  icon: Icons.event_available,
+                                  readOnly: true,
+                                  onTap: () => _selectToDate(context),
+                                  validator: (value) {
+                                    if (_toDate != null && _fromDate != null) {
+                                      if (_toDate!.isBefore(_fromDate!)) {
+                                        return 'To date must be after from date';
+                                      }
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              if (_toDateController.text.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppColor.error.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: AppColor.error,
+                                      size: 16,
+                                    ),
+                                    onPressed: _clearToDate,
+                                    tooltip: 'Clear To Date',
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Price Section
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColor.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColor.success.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.currency_rupee,
+                                color: AppColor.success,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Amount',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColor.greyDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: BookingTextField(
+                                  controller: _priceController,
+                                  labelText: 'Price',
+                                  hintText: 'Enter price in rupees',
+                                  icon: Icons.money,
+                                  readOnly: _isListening,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter a price';
+                                    }
+                                    final cleanedValue = value.trim();
+                                    if (int.tryParse(cleanedValue) == null ||
+                                        int.parse(cleanedValue) <= 0) {
+                                      return 'Please enter a valid positive integer';
+                                    }
+                                    return null;
+                                  },
+                                  onChanged:
+                                      (value) => _priceController.text = value,
+                                ),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                decoration: BoxDecoration(
+                                  gradient:
+                                      _isListening
+                                          ? const LinearGradient(
+                                            colors: [
+                                              AppColor.error,
+                                              Color(0xFFFF8E8E),
+                                            ],
+                                          )
+                                          : LinearGradient(
+                                            colors: [
+                                              AppColor.primary,
+                                              AppColor.primaryLight,
+                                            ],
+                                          ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (_isListening
+                                              ? AppColor.error
+                                              : AppColor.primary)
+                                          .withOpacity(0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: IconButton(
+                                  icon: Icon(
+                                    _isListening ? Icons.mic : Icons.mic_none,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  onPressed: () => _toggleListening(context),
+                                  tooltip:
+                                      _isListening
+                                          ? 'Stop Listening'
+                                          : 'Voice Input',
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_isListening)
+                            Container(
+                              margin: const EdgeInsets.only(top: 10),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColor.error.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColor.error,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Listening... Speak the amount',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Footer with actions
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: Colors.grey.shade50),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    debugPrint('Cancel button pressed');
+                    Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: AppColor.accentGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColor.accent.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () => _saveExpense(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.expense == null
+                              ? Icons.add_circle_outline
+                              : Icons.check_circle_outline,
+                          color: AppColor.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.expense == null ? 'Add Expense' : 'Update',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColor.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

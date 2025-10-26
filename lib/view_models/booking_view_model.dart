@@ -39,36 +39,51 @@ class BookingViewModel extends ChangeNotifier {
 
   /// ✅ Check if user was already signed in
   Future<void> checkInitialSignIn(BuildContext context) async {
-  try {
-    final isSignedIn = await googleSignIn.isSignedIn();
-    if (isSignedIn) {
-      _user = await googleSignIn.signInSilently();
-      if (_user != null) {
-        // ✅ Sync with ExpensesViewModel so expenses know who is signed in
-        final expensesViewModel = 
-            Provider.of<ExpensesViewModel>(context, listen: false);
-        expensesViewModel.setUserEmail(_user!.email);
+    try {
+      final isSignedIn = await googleSignIn.isSignedIn();
+      if (isSignedIn) {
+        _user = await googleSignIn.signInSilently();
+        if (_user != null) {
+          // ✅ Sync with ExpensesViewModel so expenses know who is signed in
+          // Use try-catch to handle case where ExpensesViewModel might not be available
+          try {
+            final expensesViewModel = Provider.of<ExpensesViewModel>(
+              context,
+              listen: false,
+            );
+            expensesViewModel.setUserEmail(_user!.email);
+          } catch (e) {
+            debugPrint('ExpensesViewModel not available yet: $e');
+          }
 
-        _fetchBookings();
-        _fetchOrganizers();
+          _fetchBookings();
+          _fetchOrganizers();
+        }
       }
+    } catch (e) {
+      debugPrint('Error restoring sign-in: $e');
+    } finally {
+      isCheckingAuth = false;
+      notifyListeners();
     }
-  } catch (e) {
-    debugPrint('Error restoring sign-in: $e');
-  } finally {
-    isCheckingAuth = false;
-    notifyListeners();
   }
-}
 
   /// ✅ Google login
   Future<void> googleLogin(BuildContext context) async {
     try {
       _user = await googleSignIn.signIn();
       if (_user != null) {
-        final expensesViewModel = 
-          Provider.of<ExpensesViewModel>(context, listen: false);
-      expensesViewModel.setUserEmail(_user!.email);
+        // ✅ Sync with ExpensesViewModel so expenses know who is signed in
+        try {
+          final expensesViewModel = Provider.of<ExpensesViewModel>(
+            context,
+            listen: false,
+          );
+          expensesViewModel.setUserEmail(_user!.email);
+        } catch (e) {
+          debugPrint('ExpensesViewModel not available: $e');
+        }
+
         _fetchBookings();
         _fetchOrganizers();
         notifyListeners();
@@ -97,12 +112,16 @@ class BookingViewModel extends ChangeNotifier {
     if (_user?.email == null) return;
     try {
       final bookings = await _firestoreService.fetchBookingsOnce(_user!.email);
-      final customOrganizers = bookings
-          .map((b) => b.organizer)
-          .where((o) => o != null && o.isNotEmpty && o != 'Ramzaan' && o != 'Irfan')
-          .cast<String>()
-          .toSet()
-          .toList();
+      final customOrganizers =
+          bookings
+              .map((b) => b.organizer)
+              .where(
+                (o) =>
+                    o != null && o.isNotEmpty && o != 'Ramzaan' && o != 'Irfan',
+              )
+              .cast<String>()
+              .toSet()
+              .toList();
       _organizers = ['Ramzaan', 'Irfan', ...customOrganizers, 'Other'];
       notifyListeners();
     } catch (e) {
@@ -119,17 +138,33 @@ class BookingViewModel extends ChangeNotifier {
     _bookingSubscription?.cancel();
     _bookingSubscription = _firestoreService
         .getBookings(_user!.email)
-        .map((bookings) => bookings
-            .where((b) =>
-                (b.date.isAtSameMomentAs(_filterStartDate ?? DateTime(2000)) ||
-                    b.date.isAfter(_filterStartDate ?? DateTime(2000))) &&
-                (b.date.isBefore((_filterEndDate ?? DateTime(2100)).add(const Duration(days: 1)))))
-            .toList()
-              ..sort((a, b) => b.date.compareTo(a.date)))
-        .listen(_bookingsStreamController.add, onError: (e) {
-          debugPrint('Error fetching bookings: $e');
-          _bookingsStreamController.addError(e);
-        });
+        .map(
+          (bookings) =>
+              bookings
+                  .where(
+                    (b) =>
+                        (b.date.isAtSameMomentAs(
+                              _filterStartDate ?? DateTime(2000),
+                            ) ||
+                            b.date.isAfter(
+                              _filterStartDate ?? DateTime(2000),
+                            )) &&
+                        (b.date.isBefore(
+                          (_filterEndDate ?? DateTime(2100)).add(
+                            const Duration(days: 1),
+                          ),
+                        )),
+                  )
+                  .toList()
+                ..sort((a, b) => b.date.compareTo(a.date)),
+        )
+        .listen(
+          _bookingsStreamController.add,
+          onError: (e) {
+            debugPrint('Error fetching bookings: $e');
+            _bookingsStreamController.addError(e);
+          },
+        );
   }
 
   /// ✅ Add booking
@@ -180,7 +215,11 @@ class BookingViewModel extends ChangeNotifier {
   }
 
   /// ✅ Apply date/month filter
-  void filterBookings({DateTime? startDate, DateTime? endDate, DateTime? month}) {
+  void filterBookings({
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? month,
+  }) {
     if (month != null) {
       _filterStartDate = DateTime(month.year, month.month, 1);
       _filterEndDate = DateTime(month.year, month.month + 1, 0);

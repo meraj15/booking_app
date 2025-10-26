@@ -1,3 +1,4 @@
+import 'package:booking_app/constant/app_color.dart';
 import 'package:booking_app/constant/app_constant_string.dart';
 import 'package:booking_app/models/expenses.dart';
 import 'package:booking_app/services/pdf_service.dart';
@@ -43,7 +44,9 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bookingViewModel = context.read<BookingViewModel>();
-      context.read<ExpensesViewModel>().setUserEmail(bookingViewModel.user?.email);
+      context.read<ExpensesViewModel>().setUserEmail(
+        bookingViewModel.user?.email,
+      );
       context.read<ExpensesViewModel>().setFilterDates(_startDate, _endDate);
     });
   }
@@ -88,18 +91,26 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   }
 
   Future<void> _showExpensesDialog(BuildContext context) async {
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
-      builder: (context) =>  ExpensesDialog(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: const ExpensesDialog(),
+          ),
     );
   }
 
   Future<void> _handleGenerateExpensesPdf(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
     if (!viewModel.isSharedPdf) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF sharing is disabled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF sharing is disabled')));
       return;
     }
 
@@ -112,7 +123,11 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate PDF: ${e.toString().split(':').last.trim()}')),
+        SnackBar(
+          content: Text(
+            'Failed to generate PDF: ${e.toString().split(':').last.trim()}',
+          ),
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -121,128 +136,257 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final bookingViewModel = context.watch<BookingViewModel>();
- final expenseViewModel = context.watch<ExpensesViewModel>();
+    final expenseViewModel = context.watch<ExpensesViewModel>();
     if (bookingViewModel.user == null) {
       return const AuthScreen();
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Expenses Entry'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: () => _handleGenerateExpensesPdf(context),
-            tooltip: 'Generate PDF',
-          ),
-          // IconButton(
-          //   icon: const Icon(Icons.logout),
-          //   onPressed: () async {
-          //     try {
-          //       await bookingViewModel.signOut();
-          //       Navigator.pushReplacement(
-          //         context,
-          //         MaterialPageRoute(builder: (_) => const AuthScreen()),
-          //       );
-          //     } catch (e) {
-          //       ScaffoldMessenger.of(context).showSnackBar(
-          //         SnackBar(content: Text('Error signing out: $e')),
-          //       );
-          //     }
-          //   },
-          // ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FilterSection(
-            startDateController: _startDateController,
-            endDateController: _endDateController,
-            onStartDateTap: () => _selectStartDate(context),
-            onEndDateTap: () => _selectEndDate(context),
-          ),
-         Padding(
-  padding: const EdgeInsets.all(8.0),
-  child: StreamBuilder<List<Expenses>>(
-    stream: expenseViewModel.expenses,
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        debugPrint('Expense stream error: ${snapshot.error}');
-      }
-      final expenses = snapshot.data ?? [];
-
-      // Calculate the total amount
-      final totalAmount = expenses.fold<double>(
-        0.0,
-        (previousValue, element) => previousValue + (element.price),
-      );
-
-      return Text(
-        "Total Amount: \$${totalAmount.toStringAsFixed(2)}",
-        style: const TextStyle(fontSize: 16),
-      );
-    },
-  ),
-),
-
-          Expanded(
-            child: Stack(
-              children: [
-                Consumer<ExpensesViewModel>(
-                  builder: (context, viewModel, _) {
-                    return StreamBuilder<List<Expenses>>(
-                      stream: viewModel.expenses,
-                      builder: (context, expenseSnapshot) {
-                        if (expenseSnapshot.hasError) {
-                          debugPrint('Expenses stream error: ${expenseSnapshot.error}');
-                          return const Center(child: Text('Error fetching Expenses'));
-                        }
-                        if (expenseSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        final expensesList = expenseSnapshot.data ?? [];
-                        if (expensesList.isEmpty) {
-                          return const Center(child: Text('No Expenses added yet'));
-                        }
-                        return ListView.builder(
-                          itemCount: expensesList.length,
-                          itemBuilder: (context, index) {
-                            final expense = expensesList[index];
-                            final dateFormat = DateFormat('dd MMM');
-                            final dateText = expense.toDate != null
-                                ? '${dateFormat.format(expense.fromDate)} to ${dateFormat.format(expense.toDate!)}'
-                                : dateFormat.format(expense.fromDate);
-                            return ExpenseItem(
-                              index: index,
-                              expense: expense,
-                              dateText: dateText,
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-                if (_isLoading)
-                  Container(
-                    color: Colors.black54,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-              ],
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: AppColor.accentGradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-        ],
+          child: AppBar(
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Expenses Entry',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              Container(
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.picture_as_pdf, size: 20),
+                  onPressed: () => _handleGenerateExpensesPdf(context),
+                  tooltip: 'Generate PDF',
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showExpensesDialog(context),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        child: const Icon(Icons.add),
+      body: Container(
+        color: AppColor.background,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FilterSection(
+              startDateController: _startDateController,
+              endDateController: _endDateController,
+              onStartDateTap: () => _selectStartDate(context),
+              onEndDateTap: () => _selectEndDate(context),
+            ),
+            // Stats Card
+            Container(
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: AppColor.accentGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColor.accent.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: StreamBuilder<List<Expenses>>(
+                stream: expenseViewModel.expenses,
+                builder: (context, snapshot) {
+                  final expenses = snapshot.data ?? [];
+                  final totalAmount = expenses.fold<double>(
+                    0.0,
+                    (previousValue, element) => previousValue + element.price,
+                  );
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            "Total Expenses",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.currency_rupee,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          Text(
+                            totalAmount.toStringAsFixed(2),
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          "${expenses.length} entries recorded",
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  Consumer<ExpensesViewModel>(
+                    builder: (context, viewModel, _) {
+                      return StreamBuilder<List<Expenses>>(
+                        stream: viewModel.expenses,
+                        builder: (context, expenseSnapshot) {
+                          if (expenseSnapshot.hasError) {
+                            debugPrint(
+                              'Expenses stream error: ${expenseSnapshot.error}',
+                            );
+                            return const Center(
+                              child: Text('Error fetching Expenses'),
+                            );
+                          }
+                          if (expenseSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColor.accent,
+                              ),
+                            );
+                          }
+                          final expensesList = expenseSnapshot.data ?? [];
+                          if (expensesList.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'No Expenses added yet',
+                                style: TextStyle(color: AppColor.grey),
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 80),
+                            itemCount: expensesList.length,
+                            itemBuilder: (context, index) {
+                              final expense = expensesList[index];
+                              final dateFormat = DateFormat('dd MMM');
+                              final dateText =
+                                  expense.toDate != null
+                                      ? '${dateFormat.format(expense.fromDate)} to ${dateFormat.format(expense.toDate!)}'
+                                      : dateFormat.format(expense.fromDate);
+                              return ExpenseItem(
+                                index: index,
+                                expense: expense,
+                                dateText: dateText,
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  if (_isLoading)
+                    Container(
+                      color: Colors.black54,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppColor.accentGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: AppColor.accent.withOpacity(0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () => _showExpensesDialog(context),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: const Icon(Icons.add, color: Colors.white, size: 24),
+        ),
       ),
     );
   }
