@@ -7,12 +7,9 @@ class Booking {
   final DateTime date;
   final String location;
   final String owner;
-  final String bookingType; 
+  final String bookingType;
   final String? organizer;
   final String description;
-
-  static const String defaultBookingType = "Day";
-  static const allowedBookingTypes = ["Day", "Day&Night", "Day+HalfNight"];
 
   Booking({
     required this.id,
@@ -22,8 +19,10 @@ class Booking {
     required this.bookingType,
     this.organizer,
     this.description = '',
-  }) : assert(allowedBookingTypes.contains(bookingType),
-            'Invalid bookingType: $bookingType');
+  }) : assert(
+         ConstantsString.allowedBookingTypes.contains(bookingType),
+         'Invalid bookingType: $bookingType',
+       );
 
   Map<String, dynamic> toMap() {
     return {
@@ -46,7 +45,9 @@ class Booking {
       parsedDate = dateValue;
     } else {
       parsedDate = DateTime.now();
-      debugPrint('⚠️ Warning: Invalid or missing date in Firestore data: $data');
+      debugPrint(
+        '⚠️ Warning: Invalid or missing date in Firestore data: $data',
+      );
     }
 
     return Booking(
@@ -73,7 +74,6 @@ class Booking {
   }
 
   factory Booking.fromJson(Map<String, dynamic> json) {
-
     return Booking(
       id: json['id'],
       date: DateTime.tryParse(json['date'] ?? '') ?? DateTime.now(),

@@ -20,17 +20,18 @@ class PdfService {
   static final _firestoreService = FirestoreService();
 
   static void _handleError(BuildContext context, String error, String type) {
-    final errorMessage = error.contains('User not authenticated')
-        ? 'Please sign in to generate PDF'
-        : error.contains('timeout')
+    final errorMessage =
+        error.contains('User not authenticated')
+            ? 'Please sign in to generate PDF'
+            : error.contains('timeout')
             ? 'Request timed out. Check your connection.'
             : error.contains('sharing not supported')
-                ? 'Sharing unavailable on this device'
-                : error.split(':').last.trim();
+            ? 'Sharing unavailable on this device'
+            : error.split(':').last.trim();
     debugPrint('Error in $type PDF: $error');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type PDF failed: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$type PDF failed: $errorMessage')));
   }
 
   static String buildDateRangeLabel(DateTime start, DateTime end) {
@@ -59,7 +60,8 @@ class PdfService {
 
     try {
       debugPrint(
-          'Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
+        'Fetching bookings for PDF with date range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}',
+      );
       final bookings = await bookingViewModel.bookings.first.timeout(
         const Duration(seconds: 5),
         onTimeout: () async {
@@ -97,13 +99,14 @@ class PdfService {
 
     try {
       debugPrint('Fetching expenses for PDF directly from Firestore...');
-      final expenses = await FirestoreService()
-          .getExpenses(
-            userEmail: userEmail,
-            startDate: startDate,
-            endDate: endDate,
-          )
-          .first;
+      final expenses =
+          await FirestoreService()
+              .getExpenses(
+                userEmail: userEmail,
+                startDate: startDate,
+                endDate: endDate,
+              )
+              .first;
 
       debugPrint('Fetched ${expenses.length} expenses from Firestore');
       return expenses;
@@ -119,9 +122,12 @@ class PdfService {
   }) async {
     final bookingViewModel = context.read<BookingViewModel>();
     final allBookings = await _fetchBookings(context);
-    final bookings = selectedOrganizer == null
-        ? allBookings
-        : allBookings.where((b) => b.organizer == selectedOrganizer).toList();
+    final bookings =
+        selectedOrganizer == null
+            ? allBookings
+            : allBookings
+                .where((b) => b.organizer == selectedOrganizer)
+                .toList();
 
     if (bookings.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,10 +141,12 @@ class PdfService {
     // ✅ Calculate weighted total bookings once
     final totalBookings = bookings.fold<double>(0, (sum, b) {
       if (b.bookingType == ConstantsString.allowedBookingTypes[0]) {
-        return sum + 1; // Day
+        return sum + 0.5; // Half Day
       } else if (b.bookingType == ConstantsString.allowedBookingTypes[1]) {
-        return sum + 2; // Day + Night
+        return sum + 1; // Day
       } else if (b.bookingType == ConstantsString.allowedBookingTypes[2]) {
+        return sum + 2; // Day + Night
+      } else if (b.bookingType == ConstantsString.allowedBookingTypes[3]) {
         return sum + 1.5; // Day + Half Night
       }
       return sum;
@@ -153,92 +161,100 @@ class PdfService {
       pdf.addPage(
         pw.MultiPage(
           pageTheme: const pw.PageTheme(margin: pw.EdgeInsets.all(32)),
-          footer: (context) => pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                "Generated on ${_dateFormat.format(DateTime.now())}",
-                style: const pw.TextStyle(fontSize: 9),
-              ),
-              pw.Text(
-                "Page ${context.pageNumber} of ${context.pagesCount}",
-                style: const pw.TextStyle(fontSize: 9),
-              ),
-            ],
-          ),
-          build: (context) => [
-            pw.Header(
-              level: 0,
-              child: pw.Text(
-                'Bookings Report',
-                style: const pw.TextStyle(fontSize: 24),
-              ),
-            ),
-            pw.SizedBox(height: 16),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.end,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Date Range: ${_dateFormat.format(startDate)} - ${_dateFormat.format(endDate)}',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-            pw.Text(
-              'Bookings:',
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            pw.SizedBox(height: 4),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(80), // Date
-                1: const pw.FlexColumnWidth(), // Address
-                2: const pw.FlexColumnWidth(0.5), // Name
-                3: const pw.FixedColumnWidth(90), // Type
-                4: const pw.FlexColumnWidth(), // Description
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColors.black,
+          footer:
+              (context) => pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    "Generated on ${_dateFormat.format(DateTime.now())}",
+                    style: const pw.TextStyle(fontSize: 9),
                   ),
+                  pw.Text(
+                    "Page ${context.pageNumber} of ${context.pagesCount}",
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ],
+              ),
+          build:
+              (context) => [
+                pw.Header(
+                  level: 0,
+                  child: pw.Text(
+                    'Bookings Report',
+                    style: const pw.TextStyle(fontSize: 24),
+                  ),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
                   children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Date', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Address', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Name', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Type', style: _headerTextStyle()),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text('Description', style: _headerTextStyle()),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Date Range: ${_dateFormat.format(startDate)} - ${_dateFormat.format(endDate)}',
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                ...bookings.asMap().entries.map(
+                pw.SizedBox(height: 20),
+                pw.Text(
+                  'Bookings:',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  columnWidths: {
+                    0: const pw.FixedColumnWidth(80), // Date
+                    1: const pw.FlexColumnWidth(), // Address
+                    2: const pw.FlexColumnWidth(0.5), // Name
+                    3: const pw.FixedColumnWidth(90), // Type
+                    4: const pw.FlexColumnWidth(), // Description
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(
+                        color: PdfColors.black,
+                      ),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Date', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Address', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Name', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text('Type', style: _headerTextStyle()),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(
+                            'Description',
+                            style: _headerTextStyle(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ...bookings.asMap().entries.map(
                       (entry) => pw.TableRow(
-                        decoration: entry.key % 2 == 0
-                            ? const pw.BoxDecoration(color: PdfColors.grey100)
-                            : null,
+                        decoration:
+                            entry.key % 2 == 0
+                                ? const pw.BoxDecoration(
+                                  color: PdfColors.grey100,
+                                )
+                                : null,
                         children: [
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(8),
@@ -280,49 +296,49 @@ class PdfService {
                         ],
                       ),
                     ),
-              ],
-            ),
-            pw.SizedBox(height: 16),
+                  ],
+                ),
+                pw.SizedBox(height: 16),
 
-            // ✅ Footer with weighted totals
-            pw.Container(
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey),
-                borderRadius: pw.BorderRadius.circular(6),
-                color: PdfColors.grey100,
-              ),
-              padding: const pw.EdgeInsets.all(12),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    "Total Day Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[0]).length}",
-                    style: _footerTextStyle(),
+                // ✅ Footer with weighted totals
+                pw.Container(
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey),
+                    borderRadius: pw.BorderRadius.circular(6),
+                    color: PdfColors.grey100,
                   ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    "Total Day&Night Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[1]).length}",
-                    style: _footerTextStyle(),
+                  padding: const pw.EdgeInsets.all(12),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        "Total Day Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[0]).length}",
+                        style: _footerTextStyle(),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        "Total Day&Night Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[1]).length}",
+                        style: _footerTextStyle(),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        "Total Day+HalfNight Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[2]).length}",
+                        style: _footerTextStyle(),
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Text("--------------------------------------"),
+                      pw.Text(
+                        "Total Bookings : ${totalBookings % 1 == 0 ? totalBookings.toInt() : totalBookings}",
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 14,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                    ],
                   ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    "Total Day+HalfNight Bookings: ${bookings.where((b) => b.bookingType == ConstantsString.allowedBookingTypes[2]).length}",
-                    style: _footerTextStyle(),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Text("--------------------------------------"),
-                  pw.Text(
-                    "Total Bookings : ${totalBookings % 1 == 0 ? totalBookings.toInt() : totalBookings}",
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 14,
-                      color: PdfColors.blue900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
         ),
       );
 
@@ -356,7 +372,7 @@ class PdfService {
     }
   }
 
-static Future<void> generateExpensesPdf(BuildContext context) async {
+  static Future<void> generateExpensesPdf(BuildContext context) async {
     final expenses = await _fetchExpenses(context);
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -482,11 +498,12 @@ static Future<void> generateExpensesPdf(BuildContext context) async {
       _handleError(context, e.toString(), 'Expenses');
     }
   }
+
   static pw.TextStyle _headerTextStyle() => pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        fontSize: 12,
-        color: PdfColors.white,
-      );
+    fontWeight: pw.FontWeight.bold,
+    fontSize: 12,
+    color: PdfColors.white,
+  );
 
   static pw.TextStyle _cellTextStyle() => const pw.TextStyle(fontSize: 10);
 
