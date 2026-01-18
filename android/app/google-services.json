@@ -14,11 +14,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "894149678804-n9edvbslaanpmj45vbdd19gtorr7np0u.apps.googleusercontent.com",
+          "client_id": "894149678804-c6va2mqll8i1ijsoh6u0h50b73i3aeo8.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.booking_app",
-            "certificate_hash": "a5a514134d2b7a2a4932ebfe4cd9e1e4e3c2673f"
+            "certificate_hash": "be540e94d11b23a72498d584fe986d778a0c481e"
+          }
+        },
+        {
+          "client_id": "894149678804-l9dal2vi0b1sli1gdpach6m0er4ndofu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.booking_app",
+            "certificate_hash": "c9d44d4a94625ed089badbf2d534a57d1a0fa3e3"
           }
         },
         {

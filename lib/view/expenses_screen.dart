@@ -26,7 +26,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   static final _firstDate = DateTime(2025);
-  static final _lastDate = DateTime(2026);
+  static final _lastDate = DateTime(2026, 12, 31);
   final DateFormat _dateFormat = DateFormat(ConstantsString.dateFormat);
 
   @override
@@ -59,9 +59,16 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   }
 
   Future<void> _selectStartDate(BuildContext context) async {
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    if (initialDate.isBefore(_firstDate)) {
+      initialDate = _firstDate;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
+    }
     final picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: _firstDate,
       lastDate: _lastDate,
     );
@@ -75,10 +82,20 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
   }
 
   Future<void> _selectEndDate(BuildContext context) async {
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    final firstDateForEndPicker = _startDate ?? _firstDate;
+
+    if (initialDate.isBefore(firstDateForEndPicker)) {
+      initialDate = firstDateForEndPicker;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-      firstDate: _startDate ?? _firstDate,
+      initialDate: initialDate,
+      firstDate: firstDateForEndPicker,
       lastDate: _lastDate,
     );
     if (picked != null) {
@@ -279,9 +296,7 @@ class _BookingExpensesScreenState extends State<BookingExpensesScreen> {
                       ),
                       const SizedBox(height: 5),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(5),

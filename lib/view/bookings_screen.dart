@@ -29,7 +29,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   String? _selectedOwnerFilter = 'Ramzaan';
 
   static final _firstDate = DateTime(2025);
-  static final _lastDate = DateTime(2026);
+  static final _lastDate = DateTime(2026, 12, 31);
 
   @override
   void initState() {
@@ -65,9 +65,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   Future<void> _selectStartDate(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    if (initialDate.isBefore(_firstDate)) {
+      initialDate = _firstDate;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
+    }
     final picked = await showDatePicker(
       context: context,
-      initialDate: viewModel.filterStartDate ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: _firstDate,
       lastDate: _lastDate,
     );
@@ -90,15 +97,20 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   Future<void> _selectEndDate(BuildContext context) async {
     final viewModel = context.read<BookingViewModel>();
-    DateTime initialDate = viewModel.filterEndDate ?? DateTime.now();
-    if (viewModel.filterStartDate != null &&
-        initialDate.isBefore(viewModel.filterStartDate!)) {
-      initialDate = viewModel.filterStartDate!;
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    final firstDateForEndPicker = viewModel.filterStartDate ?? _firstDate;
+
+    if (initialDate.isBefore(firstDateForEndPicker)) {
+      initialDate = firstDateForEndPicker;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
     }
+
     final picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: viewModel.filterStartDate ?? _firstDate,
+      firstDate: firstDateForEndPicker,
       lastDate: _lastDate,
     );
     if (picked != null) {

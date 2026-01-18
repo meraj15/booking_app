@@ -10,8 +10,9 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class ExpensesDialog extends StatefulWidget {
   final Expenses? expense;
+  final DateTime? initialDate;
 
-  const ExpensesDialog({super.key, this.expense});
+  const ExpensesDialog({super.key, this.expense, this.initialDate});
 
   @override
   // ignore: library_private_types_in_public_api
@@ -29,14 +30,16 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   bool _isListening = false;
 
   static final _firstDate = DateTime(2025);
-  static final _lastDate = DateTime(2026);
+  static final _lastDate = DateTime(2026, 12, 31);
   final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
-    _fromDate = widget.expense?.fromDate ?? DateTime.now();
+    // Use initialDate if provided (from booking), otherwise use expense date or today
+    _fromDate =
+        widget.initialDate ?? widget.expense?.fromDate ?? DateTime.now();
     _toDate = widget.expense?.toDate;
 
     _fromDateController = TextEditingController(
@@ -63,9 +66,16 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   }
 
   Future<void> _selectFromDate(BuildContext context) async {
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    if (initialDate.isBefore(_firstDate)) {
+      initialDate = _firstDate;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
+    }
     final picked = await showDatePicker(
       context: context,
-      initialDate: _fromDate ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: _firstDate,
       lastDate: _lastDate,
     );
@@ -79,10 +89,20 @@ class _ExpensesDialogState extends State<ExpensesDialog> {
   }
 
   Future<void> _selectToDate(BuildContext context) async {
+    // Use current date as initial date, clamped within valid range
+    DateTime initialDate = DateTime.now();
+    final firstDateForToPicker = _fromDate ?? _firstDate;
+
+    if (initialDate.isBefore(firstDateForToPicker)) {
+      initialDate = firstDateForToPicker;
+    } else if (initialDate.isAfter(_lastDate)) {
+      initialDate = _lastDate;
+    }
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _toDate ?? (_fromDate ?? DateTime.now()),
-      firstDate: _fromDate ?? _firstDate,
+      initialDate: initialDate,
+      firstDate: firstDateForToPicker,
       lastDate: _lastDate,
     );
     if (picked != null) {

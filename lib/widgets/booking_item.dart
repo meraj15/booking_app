@@ -311,7 +311,7 @@ class BookingItem extends StatelessWidget {
                                 bottom:
                                     MediaQuery.of(context).viewInsets.bottom,
                               ),
-                              child: const ExpensesDialog(),
+                              child: ExpensesDialog(initialDate: booking.date),
                             ),
                       );
                     }
