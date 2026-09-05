@@ -1,6 +1,7 @@
 import 'package:booking_app/models/booking.dart';
 import 'package:booking_app/services/firestore_service.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
+import 'package:booking_app/view_models/payment_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -44,8 +45,7 @@ class BookingViewModel extends ChangeNotifier {
       if (isSignedIn) {
         _user = await googleSignIn.signInSilently();
         if (_user != null) {
-          // ✅ Sync with ExpensesViewModel so expenses know who is signed in
-          // Use try-catch to handle case where ExpensesViewModel might not be available
+          // ✅ Sync with ExpensesViewModel and PaymentViewModel so they know who is signed in
           try {
             final expensesViewModel = Provider.of<ExpensesViewModel>(
               context,
@@ -54,6 +54,16 @@ class BookingViewModel extends ChangeNotifier {
             expensesViewModel.setUserEmail(_user!.email);
           } catch (e) {
             debugPrint('ExpensesViewModel not available yet: $e');
+          }
+
+          try {
+            final paymentViewModel = Provider.of<PaymentViewModel>(
+              context,
+              listen: false,
+            );
+            paymentViewModel.setUserEmail(_user!.email);
+          } catch (e) {
+            debugPrint('PaymentViewModel not available yet: $e');
           }
 
           _fetchBookings();
@@ -73,7 +83,7 @@ class BookingViewModel extends ChangeNotifier {
     try {
       _user = await googleSignIn.signIn();
       if (_user != null) {
-        // ✅ Sync with ExpensesViewModel so expenses know who is signed in
+        // ✅ Sync with ExpensesViewModel and PaymentViewModel so they know who is signed in
         try {
           final expensesViewModel = Provider.of<ExpensesViewModel>(
             context,
@@ -82,6 +92,16 @@ class BookingViewModel extends ChangeNotifier {
           expensesViewModel.setUserEmail(_user!.email);
         } catch (e) {
           debugPrint('ExpensesViewModel not available: $e');
+        }
+
+        try {
+          final paymentViewModel = Provider.of<PaymentViewModel>(
+            context,
+            listen: false,
+          );
+          paymentViewModel.setUserEmail(_user!.email);
+        } catch (e) {
+          debugPrint('PaymentViewModel not available: $e');
         }
 
         _fetchBookings();

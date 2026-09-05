@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import 'booking_dialog.dart';
+import 'payment_dialog.dart';
 
 class BookingItem extends StatelessWidget {
   final Booking booking;
@@ -314,6 +315,20 @@ class BookingItem extends StatelessWidget {
                               child: ExpensesDialog(initialDate: booking.date),
                             ),
                       );
+                    } else if (value == 'add_payment') {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder:
+                            (context) => Padding(
+                              padding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.of(context).viewInsets.bottom,
+                              ),
+                              child: PaymentDialog(initialOwnerName: booking.owner),
+                            ),
+                      );
                     }
                   },
                   itemBuilder:
@@ -343,6 +358,23 @@ class BookingItem extends StatelessWidget {
                               ),
                               SizedBox(width: 10),
                               Text('Duplicate', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'add_payment',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.payments_outlined,
+                                color: AppColor.primary,
+                                size: 16,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Owner Payment',
+                                style: TextStyle(fontSize: 12),
+                              ),
                             ],
                           ),
                         ),

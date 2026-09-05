@@ -1,4 +1,6 @@
 import 'package:booking_app/constant/app_color.dart';
+import 'package:booking_app/view/expenses_screen.dart';
+import 'package:booking_app/view/owner_payments_screen.dart';
 import 'package:booking_app/view_models/booking_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -54,6 +56,36 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.event_note, color: AppColor.primary),
+              title: const Text('Bookings', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.payments_outlined, color: AppColor.primary),
+              title: const Text('Owner Settlements', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const OwnerPaymentsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined, color: AppColor.primary),
+              title: const Text('Expenses', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const BookingExpensesScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
               leading: const Icon(Icons.logout, color: AppColor.redColor),
               title: const Text('Logout'),
               onTap: () async {
@@ -70,7 +102,6 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
         ),
-      )
-;
+      );
   }
 }

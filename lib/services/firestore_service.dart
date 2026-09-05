@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/expenses.dart';
 import '../models/booking.dart';
+import '../models/payment.dart';
 
 class FirestoreService {
   // -------------------- EXPENSES --------------------
@@ -188,6 +189,85 @@ Stream<List<Booking>> getBookings(String userEmail) {
           .delete();
     } catch (e) {
       debugPrint('Error deleting booking $bookingId for $userEmail: $e');
+      rethrow;
+    }
+  }
+
+  // -------------------- OWNER PAYMENTS & SETTLEMENTS --------------------
+  Future<void> addPayment(String userEmail, OwnerPayment payment) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('payments')
+          .add(payment.toMap());
+    } catch (e) {
+      debugPrint('Error adding payment for $userEmail: $e');
+      rethrow;
+    }
+  }
+
+  Stream<List<OwnerPayment>> getPayments({
+    required String userEmail,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    final now = DateTime.now();
+    final defaultStart = DateTime(now.year, now.month, 1);
+    final defaultEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final start = startDate ?? defaultStart;
+    final end = endDate != null
+        ? DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59)
+        : defaultEnd;
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userEmail)
+        .collection('payments')
+        .where('paymentDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('paymentDate', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('paymentDate', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) {
+              try {
+                return OwnerPayment.fromMap(doc.id, doc.data());
+              } catch (e) {
+                debugPrint('Error parsing payment ${doc.id} for $userEmail: $e');
+                return null;
+              }
+            })
+            .where((p) => p != null)
+            .cast<OwnerPayment>()
+            .toList());
+  }
+
+  Future<void> updatePayment(
+      String userEmail, String paymentId, OwnerPayment payment) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('payments')
+          .doc(paymentId)
+          .update(payment.toMap());
+    } catch (e) {
+      debugPrint('Error updating payment $paymentId for $userEmail: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deletePayment(String userEmail, String paymentId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('payments')
+          .doc(paymentId)
+          .delete();
+    } catch (e) {
+      debugPrint('Error deleting payment $paymentId for $userEmail: $e');
       rethrow;
     }
   }

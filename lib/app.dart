@@ -1,5 +1,6 @@
 import 'package:booking_app/view/auth_screen.dart';
 import 'package:booking_app/view_models/expenses_view_model.dart';
+import 'package:booking_app/view_models/payment_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +16,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => BookingViewModel()),
         ChangeNotifierProvider(create: (_) => ExpensesViewModel()),
+        ChangeNotifierProvider(create: (_) => PaymentViewModel()),
       ],
       child: MaterialApp(
         title: 'Booking App',
